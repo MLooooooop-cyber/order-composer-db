@@ -130,13 +130,11 @@ button{
 const csvUrl="./orders.csv";
 let originalData=[];
 
-// 秒→分秒
 function format(sec){
   sec=Math.max(0,Math.floor(sec));
   return Math.floor(sec/60)+"分"+(sec%60)+"秒";
 }
 
-// CSV読み込み
 Papa.parse(csvUrl,{
   download:true,
   header:true,
@@ -157,7 +155,6 @@ Papa.parse(csvUrl,{
   }
 });
 
-// 時間ソート
 function sortData(data){
   return [...data].sort((a,b)=>
     (Number(a.prep_time)+Number(a.start_time))
@@ -165,7 +162,6 @@ function sortData(data){
   );
 }
 
-// 右側表示
 function renderList(data){
   const list=document.getElementById("list");
   list.innerHTML="";
@@ -176,7 +172,6 @@ function renderList(data){
   });
 }
 
-// オーダー作成
 function createOrder(row,isSelected){
   const div=document.createElement("div");
   div.className="order";
@@ -184,7 +179,6 @@ function createOrder(row,isSelected){
 
   if(row.effect==="待つ") div.classList.add("wait");
 
-  // dataset保存（安全）
   div.dataset.idx=row.idx;
   div.dataset.prep=row.prep_time||0;
   div.dataset.start=row.start_time||0;
@@ -210,7 +204,6 @@ function createOrder(row,isSelected){
     (row.name1||"")+
     (row.name2?("<br>"+row.name2):"");
 
-  // メモはinfoの中へ（←重要修正）
   if(isSelected){
     const memo=document.createElement("input");
     memo.type="text";
@@ -233,7 +226,6 @@ function createOrder(row,isSelected){
   return div;
 }
 
-// 選択追加
 function addSelected(row){
   const sel=document.getElementById("selected");
   const el=createOrder(row,true);
@@ -241,7 +233,6 @@ function addSelected(row){
   updateTimes();
 }
 
-// ドラッグ
 function enableDrag(el){
   el.addEventListener("dragstart",()=>el.classList.add("dragging"));
   el.addEventListener("dragend",()=>{
@@ -259,7 +250,6 @@ function enableDrag(el){
   });
 }
 
-// 時間計算
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
   let base=900;
@@ -290,7 +280,6 @@ function updateTimes(){
   document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
-// 待つ
 function addWait(sec){
   addSelected({
     effect:"待つ",
@@ -309,46 +298,68 @@ function addCustomWait(){
   document.getElementById("waitInput").value="";
 }
 
-// リセット
 function resetAll(){
   document.getElementById("selected").innerHTML="";
   document.getElementById("totalTime").innerText="合計: 0秒";
 }
 
-// 共有URL
 function copyShareUrl(){
   const items=document.querySelectorAll("#selected .order");
   const data=[];
+
   items.forEach(div=>{
-    const idx=div.dataset.idx;
     const memo=div.querySelector(".memo")?.value||"";
-    data.push({idx,memo});
+
+    data.push({
+      idx:div.dataset.idx,
+      effect:div.dataset.effect,
+      prep_time:div.dataset.prep,
+      start_time:div.dataset.start,
+      memo:memo
+    });
   });
+
   const url=window.location.origin+window.location.pathname+
     "?orders="+encodeURIComponent(JSON.stringify(data));
+
   navigator.clipboard.writeText(url)
     .then(()=>alert("URLをコピーしました！"))
     .catch(()=>alert("コピーに失敗しました"));
 }
 
-// URL復元
 function loadFromUrl(){
   const params=new URLSearchParams(window.location.search);
   const orders=params.get("orders");
   if(!orders) return;
+
   try{
     const data=JSON.parse(decodeURIComponent(orders));
     const sel=document.getElementById("selected");
+
     data.forEach(o=>{
-      const row=originalData.find(r=>String(r.idx)===String(o.idx));
-      if(row){
-        const el=createOrder(row,true);
-        el.querySelector(".memo").value=o.memo||"";
-        sel.appendChild(el);
+      let row = originalData.find(r=>String(r.idx)===String(o.idx));
+
+      if(!row){
+        row={
+          effect:o.effect,
+          prep_time:o.prep_time,
+          start_time:o.start_time,
+          name1:"",
+          name2:"",
+          image_url:"",
+          idx:o.idx
+        };
       }
+
+      const el=createOrder(row,true);
+      el.querySelector(".memo").value=o.memo||"";
+      sel.appendChild(el);
     });
+
     updateTimes();
-  }catch(e){}
+  }catch(e){
+    console.error(e);
+  }
 }
 
 </script>
