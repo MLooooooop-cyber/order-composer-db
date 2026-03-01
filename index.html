@@ -2,167 +2,69 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>オーダーコンポーザーDB</title>
+<title>オーダーコンポーザー</title>
 <style>
-body { font-family: sans-serif; background: #f5f5f5; margin: 20px; }
-h1 { margin-bottom: 10px; }
-.controls { margin-bottom: 15px; }
-input, select { margin-right: 10px; padding: 5px; }
-.rangeInput { width: 60px; }
-.card {
-  background: white; padding: 15px; margin-bottom: 10px;
-  border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  cursor: grab;
-}
-.rarity-UR { border-left: 6px solid gold; }
-.rarity-SSR { border-left: 6px solid crimson; }
-.rarity-SR { border-left: 6px solid orange; }
-.rarity-R { border-left: 6px solid teal; }
-.card small { display:block; margin-top:5px; color: #555; }
-#totals { margin-bottom: 15px; font-weight: bold; }
+  body { font-family: sans-serif; padding: 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: left; }
+  th { background-color: #f0f0f0; }
+  tr:nth-child(even) { background-color: #f9f9f9; }
 </style>
 </head>
 <body>
+<h1>オーダーコンポーザー（全部 by 時間）</h1>
 
-<h1>オーダーコンポーザー一覧</h1>
+<table id="order-table">
+  <thead>
+    <tr>
+      <th>効果</th>
+      <th>準備時間</th>
+      <th>発動時間</th>
+      <th>名前1</th>
+      <th>名前2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- CSVデータがここに挿入されます -->
+  </tbody>
+</table>
 
-<div class="controls">
-  <input type="text" id="search" placeholder="名前・効果・備考を検索">
-  <select id="filterRarity">
-    <option value="">全レアリティ</option>
-    <option value="UR">UR</option>
-    <option value="SSR">SSR</option>
-    <option value="SR">SR</option>
-    <option value="R">R</option>
-  </select>
-  コスト: <input type="number" id="minCost" class="rangeInput" placeholder="最小">
-  <input type="number" id="maxCost" class="rangeInput" placeholder="最大">
-  持続時間: <input type="number" id="minDuration" class="rangeInput" placeholder="最小">
-  <input type="number" id="maxDuration" class="rangeInput" placeholder="最大">
-  <select id="sortField">
-    <option value="">並び替え</option>
-    <option value="cost_asc">コスト昇順</option>
-    <option value="cost_desc">コスト降順</option>
-    <option value="rarity_asc">レアリティ昇順</option>
-    <option value="rarity_desc">レアリティ降順</option>
-    <option value="duration_asc">持続時間昇順</option>
-    <option value="duration_desc">持続時間降順</option>
-  </select>
-</div>
-
-<div id="totals">総コスト: 0 / 総持続時間: 0秒</div>
-<div id="orders">読み込み中...</div>
-
+<!-- CSV読み込み用ライブラリ -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const sheetURL = "https://raw.githubusercontent.com/MLooooooop-cyber/order-composer-db/main/orders.csv";
+  const csvUrl = 'orders.csv'; // GitHubにアップしたCSVファイル名
 
-let ordersData = [];
+  Papa.parse(csvUrl, {
+    download: true,
+    header: true,
+    complete: function(results) {
+      let data = results.data;
 
-async function loadData() {
-  try {
-    const response = await fetch(sheetURL);
-    const csv = await response.text();
-    const rows = csv.trim().split("\n").slice(1);
-    ordersData = rows.map(row => {
-      const cols = row.split(",");
-      return {
-        id: cols[0],
-        name: cols[1],
-        rarity: cols[2],
-        cost: parseInt(cols[3]) || 0,
-        effect: cols[4],
-        duration: parseInt(cols[5]) || 0,
-        note: cols[6]
-      };
-    });
-    render();
-    enableDrag();
-  } catch(e) {
-    document.getElementById("orders").innerHTML = "データ読み込みに失敗しました";
-    console.error(e);
-  }
-}
+      // 空行を除外
+      data = data.filter(row => row.effect);
 
-function render() {
-  const container = document.getElementById("orders");
-  container.innerHTML = "";
+      // 準備時間 + 発動時間でソート（全部 by 時間順）
+      data.sort((a, b) => (Number(a.prep_time) + Number(a.start_time)) - (Number(b.prep_time) + Number(b.start_time)));
 
-  const searchText = document.getElementById("search").value.toLowerCase();
-  const filterRarity = document.getElementById("filterRarity").value;
-  const minCost = parseInt(document.getElementById("minCost").value) || 0;
-  const maxCost = parseInt(document.getElementById("maxCost").value) || Infinity;
-  const minDuration = parseInt(document.getElementById("minDuration").value) || 0;
-  const maxDuration = parseInt(document.getElementById("maxDuration").value) || Infinity;
-  const sortField = document.getElementById("sortField").value;
+      const tbody = document.getElementById('order-table').querySelector('tbody');
 
-  let filtered = ordersData.filter(order => {
-    const matchText = order.name.toLowerCase().includes(searchText) ||
-                      order.effect.toLowerCase().includes(searchText) ||
-                      order.note.toLowerCase().includes(searchText);
-    const matchRarity = !filterRarity || order.rarity === filterRarity;
-    const matchCost = order.cost >= minCost && order.cost <= maxCost;
-    const matchDuration = order.duration >= minDuration && order.duration <= maxDuration;
-    return matchText && matchRarity && matchCost && matchDuration;
-  });
-
-  if(sortField === "cost_asc") filtered.sort((a,b)=>a.cost-b.cost);
-  if(sortField === "cost_desc") filtered.sort((a,b)=>b.cost-a.cost);
-  if(sortField === "rarity_asc") filtered.sort((a,b)=>a.rarity.localeCompare(b.rarity));
-  if(sortField === "rarity_desc") filtered.sort((a,b)=>b.rarity.localeCompare(a.rarity));
-  if(sortField === "duration_asc") filtered.sort((a,b)=>a.duration-b.duration);
-  if(sortField === "duration_desc") filtered.sort((a,b)=>b.duration-a.duration);
-
-  if(filtered.length === 0) {
-    container.innerHTML = "<p>該当するオーダーはありません</p>";
-    document.getElementById("totals").textContent = "総コスト: 0 / 総持続時間: 0秒";
-    return;
-  }
-
-  let totalCost = 0, totalDuration = 0;
-  filtered.forEach(order => {
-    const card = document.createElement("div");
-    card.className = `card rarity-${order.rarity}`;
-    card.draggable = true;
-    card.innerHTML = `
-      <h3>${order.name}</h3>
-      <p><strong>レア:</strong> ${order.rarity} / <strong>コスト:</strong> ${order.cost}</p>
-      <p>${order.effect}</p>
-      <small>持続時間: ${order.duration}秒 / ${order.note || ""}</small>
-    `;
-    container.appendChild(card);
-    totalCost += order.cost;
-    totalDuration += order.duration;
-  });
-
-  document.getElementById("totals").textContent = `総コスト: ${totalCost} / 総持続時間: ${totalDuration}秒`;
-}
-
-// ドラッグ＆ドロップ
-function enableDrag() {
-  const container = document.getElementById("orders");
-  let dragged = null;
-
-  container.addEventListener("dragstart", e => { dragged = e.target; });
-  container.addEventListener("dragover", e => { e.preventDefault(); });
-  container.addEventListener("drop", e => {
-    e.preventDefault();
-    if(dragged && e.target.classList.contains("card") && dragged !== e.target) {
-      const nodes = Array.from(container.children);
-      const draggedIdx = nodes.indexOf(dragged);
-      const targetIdx = nodes.indexOf(e.target);
-      if(draggedIdx < targetIdx) e.target.after(dragged);
-      else e.target.before(dragged);
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.effect}</td>
+          <td>${row.prep_time}</td>
+          <td>${row.start_time}</td>
+          <td>${row.name1}</td>
+          <td>${row.name2 || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    },
+    error: function(err) {
+      console.error('CSV読み込み失敗', err);
+      alert('データ読み込みに失敗しました。CSVのURLや形式を確認してください。');
     }
   });
-}
-
-["search","filterRarity","minCost","maxCost","minDuration","maxDuration","sortField"].forEach(id=>{
-  document.getElementById(id).addEventListener("input", render);
-  document.getElementById(id).addEventListener("change", render);
-});
-
-loadData();
 </script>
-
 </body>
 </html>
