@@ -3,11 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
-<link rel="stylesheet" href="style.css"> <!-- 元サイトのCSSを使用 -->
+<link rel="stylesheet" href="style.css"> <!-- 元サイトCSS使用 -->
 <style>
-/* 画像非表示 */
-.order-image { display: none; }
-/* 必要に応じて調整可能 */
+  #composer-container { display: flex; padding: 20px; font-family: sans-serif; }
+  #order-list { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
+  .order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
+  .order-item.dragging { background-color: #d0f0ff; }
+  .order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
+  #composer-controls { flex: 1; }
+  button { margin: 5px 0; padding: 5px 10px; }
 </style>
 </head>
 <body>
@@ -15,7 +19,6 @@
 <div id="composer-container">
   <div id="order-list">
     <h3>全部(by時間)</h3>
-    <!-- オーダーリストがここに描画されます -->
   </div>
   <div id="composer-controls">
     <button id="calculate-time">合計時間を計算</button>
@@ -44,7 +47,7 @@ Papa.parse(csvUrl, {
   }
 });
 
-// 準備時間+発動時間でソート
+// 時間順ソート
 function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
@@ -59,14 +62,23 @@ function renderList(data){
     div.className = 'order-item';
     div.draggable = true;
     div.dataset.index = index;
-    div.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+
+    const img = document.createElement('img');
+    img.src = row.image_url || '';
+    img.alt = row.name1;
+    div.appendChild(img);
+
+    const text = document.createElement('span');
+    text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+    div.appendChild(text);
+
     listDiv.appendChild(div);
   });
 
   enableDragAndDrop();
 }
 
-// ドラッグ＆ドロップ機能
+// ドラッグ＆ドロップ
 function enableDragAndDrop(){
   const list = document.getElementById('order-list');
   let dragSrc = null;
