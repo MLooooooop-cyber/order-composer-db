@@ -227,7 +227,20 @@ function createOrder(row,isSelected){
 }
 
 function addSelected(row){
+
   const sel=document.getElementById("selected");
+
+  // すでに選択済みかチェック（待つは除外）
+  if(row.effect !== "待つ"){
+    const exists = Array.from(sel.querySelectorAll(".order"))
+      .some(div => div.dataset.idx === String(row.idx));
+
+    if(exists){
+      alert("このオーダーは既に選択されています");
+      return;
+    }
+  }
+
   const el=createOrder(row,true);
   sel.appendChild(el);
   updateTimes();
