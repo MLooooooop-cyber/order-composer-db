@@ -7,7 +7,7 @@
 <style>
 body { font-family: sans-serif; }
 #composer-container { display: flex; padding: 20px; }
-#order-list, #selected-orders { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
+#selected-orders, #order-list { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
 .order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
 .order-item.dragging { background-color: #d0f0ff; }
 .order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
@@ -18,14 +18,17 @@ button { margin: 5px 0; padding: 5px 10px; }
 
 <h2>オーダーコンポーザー（CSV版）</h2>
 <div id="composer-container">
-  <div id="order-list">
-    <h3>全部(by時間)</h3>
-  </div>
-
+  <!-- 左側: 選択オーダー（順番入れ替え可能） -->
   <div id="selected-orders">
     <h3>選択オーダー</h3>
   </div>
 
+  <!-- 右側: 全部(by時間) -->
+  <div id="order-list">
+    <h3>全部(by時間)</h3>
+  </div>
+
+  <!-- 操作ボタン -->
   <div id="composer-controls">
     <button id="calculate-time">合計時間を計算</button>
     <button id="reset-order">順番リセット</button>
@@ -58,7 +61,7 @@ function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
 
-// 左側オーダーリスト描画
+// 右側: 全部(by時間)リスト描画
 function renderOrderList(data){
   const listDiv = document.getElementById('order-list');
   listDiv.querySelectorAll('.order-item').forEach(el=>el.remove());
@@ -78,7 +81,7 @@ function renderOrderList(data){
     text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
     div.appendChild(text);
 
-    // クリックで右側に移動
+    // ダブルクリックで左側に移動
     div.addEventListener('dblclick', ()=>moveToSelected(row));
 
     listDiv.appendChild(div);
@@ -87,7 +90,7 @@ function renderOrderList(data){
   enableDragAndDrop();
 }
 
-// 選択オーダー（右側）に追加
+// 左側: 選択オーダーに追加
 function moveToSelected(row){
   const selDiv = document.getElementById('selected-orders');
 
@@ -108,7 +111,7 @@ function moveToSelected(row){
   enableDragAndDrop();
 }
 
-// ドラッグ＆ドロップ
+// ドラッグ＆ドロップ（両方のリスト対応）
 function enableDragAndDrop(){
   const lists = [document.getElementById('order-list'), document.getElementById('selected-orders')];
   let dragSrc = null;
