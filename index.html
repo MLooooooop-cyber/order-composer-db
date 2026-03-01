@@ -169,19 +169,20 @@ function formatTime(sec){
   return `${m}分${s}秒`;
 }
 
+// 残り時間更新（準備時間 / 発動 = 残り準備 - 発動時間）
 function updateRemainingTimes(){
   const items = document.querySelectorAll('#selected-orders .order-item');
-  let remainingPrep = 900;
-  let remainingStart = 900;
+  let remainingPrep = 900; // 15分
   items.forEach(div=>{
     const times = div.textContent.match(/(\d+)\+(\d+)秒/);
     if(times){
       const prep = Number(times[1]);
       const start = Number(times[2]);
       remainingPrep -= prep;
-      remainingStart -= start;
+      let remainingStart = remainingPrep - start;
+      remainingStart = Math.max(0, remainingStart);
       const label = div.querySelector('.time-label');
-      label.innerHTML = `残り準備: ${formatTime(remainingPrep)}<br>残り発動: ${formatTime(remainingStart)}`;
+      label.innerHTML = `残り準備: ${formatTime(remainingPrep)}<br>発動: ${formatTime(remainingStart)}`;
     }
   });
 }
