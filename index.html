@@ -3,34 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
-<link rel="stylesheet" href="style.css"> <!-- 元サイトCSS -->
+<link rel="stylesheet" href="style.css">
 <style>
 body { font-family: sans-serif; }
 #composer-container { display: flex; padding: 20px; }
 #selected-orders, #order-list { width: 380px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; justify-content: space-between; }
+.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
 .order-item.dragging { background-color: #d0f0ff; }
-.order-text { display: flex; align-items: center; }
-.order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
+.order-text { display: flex; align-items: center; flex-grow: 1; }
+.order-item img { width: 40px; height: 40px; margin: 0 8px; object-fit: contain; }
+.time-label { font-weight: bold; color: #333; margin-right: 8px; min-width: 60px; text-align: right; }
 button { margin: 5px 0; padding: 5px 10px; }
-.time-label { margin-left: 10px; font-weight: bold; color: #333; }
 </style>
 </head>
 <body>
 
 <h2>オーダーコンポーザー（CSV版）</h2>
 <div id="composer-container">
-  <!-- 左側: 選択オーダー（順番入れ替え可能） -->
   <div id="selected-orders">
     <h3>選択オーダー</h3>
   </div>
 
-  <!-- 右側: 全部(by時間) -->
   <div id="order-list">
     <h3>全部(by時間)</h3>
   </div>
 
-  <!-- 操作ボタン -->
   <div id="composer-controls">
     <button id="calculate-time">合計時間を計算</button>
     <button id="reset-order">順番リセット</button>
@@ -58,12 +55,11 @@ Papa.parse(csvUrl, {
   }
 });
 
-// 時間順ソート
 function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
 
-// 右側: 全部(by時間)リスト描画
+// 右側リスト描画
 function renderOrderList(data){
   const listDiv = document.getElementById('order-list');
   listDiv.querySelectorAll('.order-item').forEach(el=>el.remove());
@@ -72,7 +68,6 @@ function renderOrderList(data){
     const div = document.createElement('div');
     div.className = 'order-item';
     div.draggable = true;
-    div.dataset.index = index;
 
     const textContainer = document.createElement('div');
     textContainer.className = 'order-text';
@@ -82,28 +77,30 @@ function renderOrderList(data){
     img.alt = row.name1;
     textContainer.appendChild(img);
 
+    const levelText = row.level ? ` (${row.level})` : '';
     const text = document.createElement('span');
-    text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+    text.textContent = `${row.effect}${levelText} - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
     textContainer.appendChild(text);
 
     div.appendChild(textContainer);
-
-    // ダブルクリックで左側に移動
     div.addEventListener('dblclick', ()=>moveToSelected(row));
 
     listDiv.appendChild(div);
   });
-
   enableDragAndDrop();
 }
 
-// 左側: 選択オーダーに追加（残り時間表示）
+// 左側に追加（残り時間を左側に表示）
 function moveToSelected(row){
   const selDiv = document.getElementById('selected-orders');
 
   const div = document.createElement('div');
   div.className = 'order-item';
   div.draggable = true;
+
+  const timeLabel = document.createElement('span');
+  timeLabel.className = 'time-label';
+  div.appendChild(timeLabel);
 
   const textContainer = document.createElement('div');
   textContainer.className = 'order-text';
@@ -113,23 +110,17 @@ function moveToSelected(row){
   img.alt = row.name1;
   textContainer.appendChild(img);
 
+  const levelText = row.level ? ` (${row.level})` : '';
   const text = document.createElement('span');
-  text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+  text.textContent = `${row.effect}${levelText} - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
   textContainer.appendChild(text);
 
   div.appendChild(textContainer);
-
-  // 残り時間ラベル
-  const timeLabel = document.createElement('span');
-  timeLabel.className = 'time-label';
-  div.appendChild(timeLabel);
-
   selDiv.appendChild(div);
   enableDragAndDrop();
   updateRemainingTimes();
 }
 
-// ドラッグ＆ドロップ（両方のリスト対応）
 function enableDragAndDrop(){
   const lists = [document.getElementById('order-list'), document.getElementById('selected-orders')];
   let dragSrc = null;
@@ -163,7 +154,15 @@ function enableDragAndDrop(){
   });
 }
 
-// 残り時間更新（15分=900秒スタート）
+// 秒→〇分〇秒変換
+function formatTime(sec){
+  sec = Math.max(0, sec);
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return `${m}分${s}秒`;
+}
+
+// 残り時間更新
 function updateRemainingTimes(){
   const items = document.querySelectorAll('#selected-orders .order-item');
   let remaining = 900; // 15分
@@ -173,7 +172,7 @@ function updateRemainingTimes(){
       const duration = Number(times[1]) + Number(times[2]);
       remaining -= duration;
       const label = div.querySelector('.time-label');
-      label.textContent = `残り時間: ${remaining>0?remaining:0}秒`;
+      label.textContent = formatTime(remaining);
     }
   });
 }
