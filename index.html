@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>オーダーコンポーザーDB</title>
+<style>
+body {
+  font-family: sans-serif;
+  background: #f5f5f5;
+  margin: 20px;
+}
+.card {
+  background: white;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.rarity-UR { border-left: 6px solid gold; }
+.rarity-SSR { border-left: 6px solid crimson; }
+.rarity-SR { border-left: 6px solid orange; }
+.rarity-R { border-left: 6px solid teal; }
+</style>
+</head>
+<body>
+
+<h1>オーダーコンポーザー一覧</h1>
+<div id="orders">読み込み中...</div>
+
+<script>
+const sheetURL = "ここにあなたのCSV公開URLを貼る";
+
+async function loadData() {
+  const response = await fetch(sheetURL);
+  const csv = await response.text();
+
+  const rows = csv.trim().split("\n").slice(1);
+  const data = rows.map(row => {
+    const cols = row.split(",");
+    return {
+      id: cols[0],
+      name: cols[1],
+      rarity: cols[2],
+      cost: cols[3],
+      effect: cols[4],
+      duration: cols[5],
+      note: cols[6],
+    };
+  });
+
+  render(data);
+}
+
+function render(data) {
+  const container = document.getElementById("orders");
+  container.innerHTML = "";
+
+  data.forEach(order => {
+    container.innerHTML += `
+      <div class="card rarity-${order.rarity}">
+        <h3>${order.name}</h3>
+        <p><strong>レア:</strong> ${order.rarity} / <strong>コスト:</strong> ${order.cost}</p>
+        <p>${order.effect}</p>
+        <small>${order.duration || ""}</small>
+      </div>
+    `;
+  });
+}
+
+loadData();
+</script>
+
+</body>
+</html>
