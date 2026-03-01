@@ -9,6 +9,8 @@
   th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: left; }
   th { background-color: #f0f0f0; }
   tr:nth-child(even) { background-color: #f9f9f9; }
+  tbody tr.dragging { background-color: #d0f0ff; }
+  td.time { text-align: right; }
 </style>
 </head>
 <body>
@@ -29,42 +31,105 @@
   </tbody>
 </table>
 
-<!-- CSV読み込み用ライブラリ -->
+<button id="calculate-time">合計時間を計算</button>
+<button id="reset-order">順番リセット</button>
+<p id="total-time">合計時間：0</p>
+
+<!-- ライブラリ -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
 <script>
-  const csvUrl = 'orders.csv'; // GitHubにアップしたCSVファイル名
+const csvUrl = 'orders.csv'; // CSVファイル
+let originalData = []; // 初期データ保存用
 
-  Papa.parse(csvUrl, {
-    download: true,
-    header: true,
-    complete: function(results) {
-      let data = results.data;
+// CSV読み込み
+Papa.parse(csvUrl, {
+  download: true,
+  header: true,
+  complete: function(results) {
+    originalData = results.data.filter(row => row.effect);
+    renderTable(sortByTime(originalData));
+  },
+  error: function(err) {
+    console.error('CSV読み込み失敗', err);
+    alert('データ読み込みに失敗しました。CSVのURLや形式を確認してください。');
+  }
+});
 
-      // 空行を除外
-      data = data.filter(row => row.effect);
+// 時間順ソート
+function sortByTime(data) {
+  return [...data].sort((a,b)=>Number(a.prep_time)+Number(a.start_time)- (Number(b.prep_time)+Number(b.start_time)));
+}
 
-      // 準備時間 + 発動時間でソート（全部 by 時間順）
-      data.sort((a, b) => (Number(a.prep_time) + Number(a.start_time)) - (Number(b.prep_time) + Number(b.start_time)));
-
-      const tbody = document.getElementById('order-table').querySelector('tbody');
-
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.effect}</td>
-          <td>${row.prep_time}</td>
-          <td>${row.start_time}</td>
-          <td>${row.name1}</td>
-          <td>${row.name2 || ''}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    },
-    error: function(err) {
-      console.error('CSV読み込み失敗', err);
-      alert('データ読み込みに失敗しました。CSVのURLや形式を確認してください。');
-    }
+// テーブル描画
+function renderTable(data) {
+  const tbody = document.getElementById('order-table').querySelector('tbody');
+  tbody.innerHTML = '';
+  data.forEach((row,index) => {
+    const tr = document.createElement('tr');
+    tr.setAttribute('draggable','true');
+    tr.dataset.index = index;
+    tr.innerHTML = `
+      <td>${row.effect}</td>
+      <td class="time">${row.prep_time}</td>
+      <td class="time">${row.start_time}</td>
+      <td>${row.name1}</td>
+      <td>${row.name2 || ''}</td>
+    `;
+    tbody.appendChild(tr);
   });
+  enableDragAndDrop();
+}
+
+// ドラッグ＆ドロップ
+function enableDragAndDrop() {
+  const tbody = document.getElementById('order-table').querySelector('tbody');
+  let dragSrc = null;
+
+  tbody.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('dragstart', e => {
+      dragSrc = tr;
+      tr.classList.add('dragging');
+    });
+    tr.addEventListener('dragend', e => {
+      tr.classList.remove('dragging');
+    });
+    tr.addEventListener('dragover', e => {
+      e.preventDefault();
+    });
+    tr.addEventListener('drop', e => {
+      e.preventDefault();
+      if(dragSrc && dragSrc !== tr){
+        const nodes = Array.from(tbody.children);
+        const dragIndex = nodes.indexOf(dragSrc);
+        const dropIndex = nodes.indexOf(tr);
+        if(dragIndex < dropIndex){
+          tbody.insertBefore(dragSrc, tr.nextSibling);
+        } else {
+          tbody.insertBefore(dragSrc, tr);
+        }
+      }
+    });
+  });
+}
+
+// 合計時間計算
+document.getElementById('calculate-time').addEventListener('click', ()=>{
+  const tbody = document.getElementById('order-table').querySelector('tbody');
+  let total = 0;
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const prep = Number(tr.children[1].textContent);
+    const start = Number(tr.children[2].textContent);
+    total += prep + start;
+  });
+  document.getElementById('total-time').textContent = `合計時間：${total}`;
+});
+
+// 順番リセット
+document.getElementById('reset-order').addEventListener('click', ()=>{
+  renderTable(sortByTime(originalData));
+});
+
 </script>
 </body>
 </html>
