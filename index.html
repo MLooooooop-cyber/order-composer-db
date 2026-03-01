@@ -184,11 +184,11 @@ function createOrder(row,isSelected){
   info.innerHTML=
     row.effect+level+"<br>"+
     row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+(row.name2?","+row.name2:"");
+    (row.name1||"")+(row.name2?("<br>"+row.name2):"");
   div.appendChild(info);
 
   if(isSelected){
-    // メモ欄
+    // メモ欄をname2の下に
     const memo=document.createElement("input");
     memo.type="text";
     memo.placeholder="メモ";
@@ -243,7 +243,7 @@ function updateTimes(){
     if(!m) return;
     const prep=Number(m[1]);
     const start=Number(m[2]);
-    const memoInput = div.querySelector(".memo");
+
     let activation;
 
     if(div.classList.contains("wait")){
