@@ -8,7 +8,6 @@ body { font-family: sans-serif; background: #f5f5f5; margin: 20px; }
 h1 { margin-bottom: 10px; }
 .controls { margin-bottom: 15px; }
 input, select { margin-right: 10px; padding: 5px; }
-.rangeInput { width: 60px; }
 .card {
   background: white; padding: 15px; margin-bottom: 15px;
   border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -17,7 +16,6 @@ input, select { margin-right: 10px; padding: 5px; }
 .rarity-SSR { border-left: 6px solid crimson; }
 .rarity-SR { border-left: 6px solid orange; }
 .rarity-R { border-left: 6px solid teal; }
-.card small { display:block; margin-top:5px; color: #555; }
 </style>
 </head>
 <body>
@@ -25,7 +23,7 @@ input, select { margin-right: 10px; padding: 5px; }
 <h1>オーダーコンポーザー一覧</h1>
 
 <div class="controls">
-  <input type="text" id="search" placeholder="名前・効果・備考を検索">
+  <input type="text" id="search" placeholder="オーダー名・効果を検索">
   <select id="filterRarity">
     <option value="">全レアリティ</option>
     <option value="UR">UR</option>
@@ -33,25 +31,17 @@ input, select { margin-right: 10px; padding: 5px; }
     <option value="SR">SR</option>
     <option value="R">R</option>
   </select>
-  コスト: <input type="number" id="minCost" class="rangeInput" placeholder="最小">
-  <input type="number" id="maxCost" class="rangeInput" placeholder="最大">
-  持続時間: <input type="number" id="minDuration" class="rangeInput" placeholder="最小">
-  <input type="number" id="maxDuration" class="rangeInput" placeholder="最大">
-  <select id="sortField">
-    <option value="">並び替え</option>
-    <option value="cost_asc">コスト昇順</option>
-    <option value="cost_desc">コスト降順</option>
-    <option value="rarity_asc">レアリティ昇順</option>
-    <option value="rarity_desc">レアリティ降順</option>
-    <option value="duration_asc">持続時間昇順</option>
-    <option value="duration_desc">持続時間降順</option>
+  <select id="sortCost">
+    <option value="">コスト順</option>
+    <option value="asc">昇順</option>
+    <option value="desc">降順</option>
   </select>
 </div>
 
 <div id="orders">読み込み中...</div>
 
 <script>
-const sheetURL = "orders.csv"; // GitHub 内 CSV
+const sheetURL = "orders.csv"; // GitHub リポジトリに置いた CSV
 
 let ordersData = [];
 
@@ -68,7 +58,7 @@ async function loadData() {
         rarity: cols[2],
         cost: parseInt(cols[3]) || 0,
         effect: cols[4],
-        duration: parseInt(cols[5]) || 0,
+        duration: cols[5],
         note: cols[6]
       };
     });
@@ -85,29 +75,17 @@ function render() {
 
   const searchText = document.getElementById("search").value.toLowerCase();
   const filterRarity = document.getElementById("filterRarity").value;
-  const minCost = parseInt(document.getElementById("minCost").value) || 0;
-  const maxCost = parseInt(document.getElementById("maxCost").value) || Infinity;
-  const minDuration = parseInt(document.getElementById("minDuration").value) || 0;
-  const maxDuration = parseInt(document.getElementById("maxDuration").value) || Infinity;
-  const sortField = document.getElementById("sortField").value;
+  const sortCost = document.getElementById("sortCost").value;
 
   let filtered = ordersData.filter(order => {
     const matchText = order.name.toLowerCase().includes(searchText) ||
-                      order.effect.toLowerCase().includes(searchText) ||
-                      order.note.toLowerCase().includes(searchText);
+                      order.effect.toLowerCase().includes(searchText);
     const matchRarity = !filterRarity || order.rarity === filterRarity;
-    const matchCost = order.cost >= minCost && order.cost <= maxCost;
-    const matchDuration = order.duration >= minDuration && order.duration <= maxDuration;
-    return matchText && matchRarity && matchCost && matchDuration;
+    return matchText && matchRarity;
   });
 
-  // 並び替え
-  if(sortField === "cost_asc") filtered.sort((a,b)=>a.cost-b.cost);
-  if(sortField === "cost_desc") filtered.sort((a,b)=>b.cost-a.cost);
-  if(sortField === "rarity_asc") filtered.sort((a,b)=>a.rarity.localeCompare(b.rarity));
-  if(sortField === "rarity_desc") filtered.sort((a,b)=>b.rarity.localeCompare(a.rarity));
-  if(sortField === "duration_asc") filtered.sort((a,b)=>a.duration-b.duration);
-  if(sortField === "duration_desc") filtered.sort((a,b)=>b.duration-a.duration);
+  if(sortCost === "asc") filtered.sort((a,b)=>a.cost-b.cost);
+  if(sortCost === "desc") filtered.sort((a,b)=>b.cost-a.cost);
 
   if(filtered.length === 0) {
     container.innerHTML = "<p>該当するオーダーはありません</p>";
@@ -120,17 +98,16 @@ function render() {
         <h3>${order.name}</h3>
         <p><strong>レア:</strong> ${order.rarity} / <strong>コスト:</strong> ${order.cost}</p>
         <p>${order.effect}</p>
-        <small>持続時間: ${order.duration || "-"}秒 / ${order.note || ""}</small>
+        <small>${order.duration || ""}</small>
       </div>
     `;
   });
 }
 
-// リアルタイム反映
-["search","filterRarity","minCost","maxCost","minDuration","maxDuration","sortField"].forEach(id=>{
-  document.getElementById(id).addEventListener("input", render);
-  document.getElementById(id).addEventListener("change", render);
-});
+// イベントリスナーでリアルタイム反映
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("filterRarity").addEventListener("change", render);
+document.getElementById("sortCost").addEventListener("change", render);
 
 loadData();
 </script>
