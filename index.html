@@ -7,11 +7,13 @@
 <style>
 body { font-family: sans-serif; }
 #composer-container { display: flex; padding: 20px; }
-#selected-orders, #order-list { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
+#selected-orders, #order-list { width: 380px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
+.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; justify-content: space-between; }
 .order-item.dragging { background-color: #d0f0ff; }
+.order-text { display: flex; align-items: center; }
 .order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
 button { margin: 5px 0; padding: 5px 10px; }
+.time-label { margin-left: 10px; font-weight: bold; color: #333; }
 </style>
 </head>
 <body>
@@ -32,7 +34,7 @@ button { margin: 5px 0; padding: 5px 10px; }
   <div id="composer-controls">
     <button id="calculate-time">合計時間を計算</button>
     <button id="reset-order">順番リセット</button>
-    <p id="total-time">合計時間：0</p>
+    <p id="total-time">合計時間：0秒</p>
   </div>
 </div>
 
@@ -72,14 +74,19 @@ function renderOrderList(data){
     div.draggable = true;
     div.dataset.index = index;
 
+    const textContainer = document.createElement('div');
+    textContainer.className = 'order-text';
+
     const img = document.createElement('img');
     img.src = row.image_url || '';
     img.alt = row.name1;
-    div.appendChild(img);
+    textContainer.appendChild(img);
 
     const text = document.createElement('span');
     text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
-    div.appendChild(text);
+    textContainer.appendChild(text);
+
+    div.appendChild(textContainer);
 
     // ダブルクリックで左側に移動
     div.addEventListener('dblclick', ()=>moveToSelected(row));
@@ -90,7 +97,7 @@ function renderOrderList(data){
   enableDragAndDrop();
 }
 
-// 左側: 選択オーダーに追加
+// 左側: 選択オーダーに追加（残り時間表示）
 function moveToSelected(row){
   const selDiv = document.getElementById('selected-orders');
 
@@ -98,17 +105,28 @@ function moveToSelected(row){
   div.className = 'order-item';
   div.draggable = true;
 
+  const textContainer = document.createElement('div');
+  textContainer.className = 'order-text';
+
   const img = document.createElement('img');
   img.src = row.image_url || '';
   img.alt = row.name1;
-  div.appendChild(img);
+  textContainer.appendChild(img);
 
   const text = document.createElement('span');
   text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
-  div.appendChild(text);
+  textContainer.appendChild(text);
+
+  div.appendChild(textContainer);
+
+  // 残り時間ラベル
+  const timeLabel = document.createElement('span');
+  timeLabel.className = 'time-label';
+  div.appendChild(timeLabel);
 
   selDiv.appendChild(div);
   enableDragAndDrop();
+  updateRemainingTimes();
 }
 
 // ドラッグ＆ドロップ（両方のリスト対応）
@@ -124,6 +142,7 @@ function enableDragAndDrop(){
       });
       item.addEventListener('dragend', e=>{
         item.classList.remove('dragging');
+        updateRemainingTimes();
       });
       item.addEventListener('dragover', e=>e.preventDefault());
       item.addEventListener('drop', e=>{
@@ -137,9 +156,25 @@ function enableDragAndDrop(){
           } else {
             list.insertBefore(dragSrc, item);
           }
+          updateRemainingTimes();
         }
       });
     });
+  });
+}
+
+// 残り時間更新（15分=900秒スタート）
+function updateRemainingTimes(){
+  const items = document.querySelectorAll('#selected-orders .order-item');
+  let remaining = 900; // 15分
+  items.forEach(div=>{
+    const times = div.textContent.match(/(\d+)\+(\d+)秒/);
+    if(times){
+      const duration = Number(times[1]) + Number(times[2]);
+      remaining -= duration;
+      const label = div.querySelector('.time-label');
+      label.textContent = `残り時間: ${remaining>0?remaining:0}秒`;
+    }
   });
 }
 
@@ -154,13 +189,14 @@ document.getElementById('calculate-time').addEventListener('click', ()=>{
     }
   });
   document.getElementById('total-time').textContent = `合計時間：${total}秒`;
+  updateRemainingTimes();
 });
 
 // 順番リセット
 document.getElementById('reset-order').addEventListener('click', ()=>{
   renderOrderList(sortByTime(originalData));
   document.getElementById('selected-orders').querySelectorAll('.order-item').forEach(el=>el.remove());
-  document.getElementById('total-time').textContent = '合計時間：0';
+  document.getElementById('total-time').textContent = '合計時間：0秒';
 });
 </script>
 </body>
