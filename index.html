@@ -2,327 +2,161 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Order Composer</title>
-
+<title>Order Composer CSV版</title>
 <style>
-body{
-  margin:0;
-  background:#f2f2f2;
-  font-family:Arial, Helvetica, sans-serif;
-  font-size:13px;
-}
-
-.wrapper{
-  width:1200px;
-  margin:20px auto;
-}
-
-.title{
-  font-size:20px;
-  margin-bottom:10px;
-}
-
-.main{
-  display:flex;
-  gap:15px;
-}
-
-.panel{
-  background:#fff;
-  border:1px solid #ccc;
-  padding:10px;
-}
-
-.left{
-  width:420px;
-}
-
-.right{
-  flex:1;
-}
-
-.scroll{
-  height:600px;
-  overflow-y:auto;
-  border:1px solid #ddd;
-  padding:5px;
-}
-
-.order{
-  display:flex;
-  align-items:center;
-  border:1px solid #e0e0e0;
-  margin-bottom:4px;
-  padding:4px;
-  background:#fafafa;
-  cursor:pointer;
-}
-
-.order:hover{
-  background:#eef6ff;
-}
-
-.order.wait{
-  background:#e8e8e8;
-}
-
-.order img{
-  width:36px;
-  height:36px;
-  object-fit:contain;
-  margin-right:6px;
-}
-
-.info{
-  flex:1;
-  line-height:1.3;
-  word-break:break-all;
-}
-
-.timebox{
-  width:120px;
-  text-align:right;
-  font-weight:bold;
-  margin-right:6px;
-}
-
-.controls{
-  margin-bottom:8px;
-}
-
-button{
-  font-size:12px;
-  padding:2px 6px;
-  margin-right:4px;
-}
-
-.total{
-  margin-top:6px;
-  font-weight:bold;
-}
+body { font-family: sans-serif; background:#f0f0f0; margin:0; padding:0; }
+#container { display:flex; }
+#left, #right { padding:10px; }
+#left { width:50%; background:#fff; }
+#right { width:50%; background:#eee; }
+.order { border:1px solid #ccc; margin:5px; padding:5px; background:#fff; cursor:move; }
+.time-display { font-weight:bold; margin-right:5px; }
+.wait-btn { margin:2px; cursor:pointer; }
 </style>
 </head>
 <body>
-
-<div class="wrapper">
-
-<div class="title">Order Composer</div>
-
-<div class="main">
-
-<!-- LEFT -->
-<div class="panel left">
-
-<div class="controls">
-  <button onclick="addWait(5)">+5秒</button>
-  <button onclick="addWait(10)">+10秒</button>
-  <input type="number" id="waitInput" style="width:70px;">
-  <button onclick="addCustomWait()">追加</button>
-  <button onclick="resetAll()">リセット</button>
-  <button onclick="copyShareUrl()">共有URLをコピー</button>
+<h2>Order Composer CSV版</h2>
+<div>
+<label>CSVファイル: <input type="file" id="csvFile"></label>
 </div>
-
-<div id="selected" class="scroll"></div>
-
-<div class="total" id="totalTime">合計: 0秒</div>
-
+<div id="container">
+<div id="left">
+<h3>選択オーダー</h3>
+<div id="selectedOrders"></div>
+<div>
+<button class="wait-btn" data-seconds="5">待つ 5秒</button>
+<button class="wait-btn" data-seconds="10">待つ 10秒</button>
+<input type="number" id="waitCustom" placeholder="秒数">
+<button id="waitAdd">待つ追加</button>
 </div>
-
-<!-- RIGHT -->
-<div class="panel right">
-<div id="list" class="scroll"></div>
+<div>
+<a id="shareLink" href="#">共有リンクをコピー</a>
 </div>
-
+</div>
+<div id="right">
+<h3>オーダー一覧</h3>
+<div id="orderList"></div>
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-
-const csvUrl="orders.csv";
-let originalData=[];
-
-// 秒 → 分秒フォーマット
-function format(sec){
-  sec=Math.max(0,Math.floor(sec));
-  return Math.floor(sec/60)+"分"+(sec%60)+"秒";
-}
-
 // CSV読み込み
-Papa.parse(csvUrl,{
-  download:true,
-  header:true,
-  complete:function(res){
-    originalData=res.data.filter(r=>r.effect).map((r,i)=>({...r, idx:i}));
-    renderList(sortData(originalData));
-    loadFromUrl();
-  }
+let orders = [];
+document.getElementById('csvFile').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e){
+        const text = e.target.result;
+        parseCSV(text);
+        renderOrderList();
+    };
+    reader.readAsText(file);
 });
 
-// ソート(by時間)
-function sortData(data){
-  return [...data].sort((a,b)=>
-    (Number(a.prep_time)+Number(a.start_time))
-    -(Number(b.prep_time)+Number(b.start_time))
-  );
-}
-
-// 右側リスト表示
-function renderList(data){
-  const list=document.getElementById("list");
-  list.innerHTML="";
-  data.forEach(row=>{
-    const el=createOrder(row,false);
-    el.ondblclick=()=>addSelected(row);
-    list.appendChild(el);
-  });
-}
-
-// オーダー作成
-function createOrder(row,isSelected){
-  const div=document.createElement("div");
-  div.className="order";
-  div.draggable=isSelected;
-  if(row.effect==="待つ") div.classList.add("wait");
-
-  // 左側の時間box
-  if(isSelected){
-    const time=document.createElement("div");
-    time.className="timebox";
-    div.appendChild(time);
-  }
-
-  // アイコン表示
-  const img=document.createElement("img");
-  img.src=row.image_url||""; // CSVのimage_url列
-  div.appendChild(img);
-
-  const info=document.createElement("div");
-  info.className="info";
-  const level=row.level?` (${row.level})`:"";
-  info.innerHTML=
-    row.effect+level+"<br>"+
-    row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+(row.name2?","+row.name2:"");
-  div.appendChild(info);
-
-  div.dataset.idx=row.idx;
-  if(isSelected) enableDrag(div);
-  return div;
-}
-
-// 選択オーダーに追加
-function addSelected(row){
-  const sel=document.getElementById("selected");
-  const el=createOrder(row,true);
-  sel.appendChild(el);
-  updateTimes();
-}
-
-// ドラッグ＆ドロップ有効化
-function enableDrag(el){
-  el.addEventListener("dragstart",()=>el.classList.add("dragging"));
-  el.addEventListener("dragend",()=>{
-    el.classList.remove("dragging");
-    updateTimes();
-  });
-  el.addEventListener("dragover",e=>e.preventDefault());
-  el.addEventListener("drop",e=>{
-    e.preventDefault();
-    const dragging=document.querySelector(".dragging");
-    if(dragging && dragging!==el){
-      el.parentNode.insertBefore(dragging,el);
+function parseCSV(text){
+    orders = [];
+    const lines = text.split(/\r?\n/);
+    const header = lines.shift().split(',');
+    for(const line of lines){
+        if(!line.trim()) continue;
+        const cols = line.split(',');
+        orders.push({
+            effect: cols[0],
+            prep_time: parseInt(cols[1]),
+            start_time: parseInt(cols[2]),
+            name1: cols[3],
+            name2: cols[4],
+            level: cols[5]
+        });
     }
-    updateTimes();
-  });
 }
 
-// 時間計算（待つ対応）
-function updateTimes(){
-  const items=document.querySelectorAll("#selected .order");
-  let base=900; // 15分
-  let total=0;
+// オーダー一覧表示
+function renderOrderList(){
+    const container = document.getElementById('orderList');
+    container.innerHTML = '';
+    orders.forEach((o,i)=>{
+        const div = document.createElement('div');
+        div.className='order';
+        div.textContent = `${o.effect} (${o.name1}${o.name2?','+o.name2:''}) Lv:${o.level}`;
+        div.draggable=true;
+        div.addEventListener('dragstart', e=>{
+            e.dataTransfer.setData('text/plain', i);
+        });
+        div.addEventListener('dblclick', ()=>addSelectedOrder(i));
+        container.appendChild(div);
+    });
+}
 
-  items.forEach(div=>{
-    const m=div.innerHTML.match(/(\d+)\+(\d+)秒/);
-    if(!m) return;
+// 選択オーダー管理
+let selected = [];
+function addSelectedOrder(idx){
+    const o = Object.assign({}, orders[idx]);
+    selected.push(o);
+    renderSelected();
+}
 
-    const prep=Number(m[1]);
-    const start=Number(m[2]);
-    let activation;
+// 選択リスト描画
+function renderSelected(){
+    const container = document.getElementById('selectedOrders');
+    container.innerHTML = '';
+    let elapsed = 0;
+    selected.forEach((o,i)=>{
+        const div = document.createElement('div');
+        div.className='order';
+        const remainingPrep = Math.max(0, 15*60 - elapsed); // 残り準備時間
+        const activation = Math.max(0, remainingPrep - o.prep_time);
+        div.innerHTML = `<span class="time-display">${formatTime(remainingPrep)} / ${formatTime(activation)}</span><br>${o.effect}<br>${o.name1}${o.name2?','+o.name2:''}`;
+        elapsed += o.prep_time + o.start_time;
+        container.appendChild(div);
+    });
+    updateShareLink();
+}
 
-    if(div.classList.contains("wait")){
-        activation = Math.max(0, base - start);
-        div.querySelector(".timebox").innerHTML =
-          format(base)+"<br>"+format(activation);
-        base = activation;
-        total += start;
-    } else {
-        activation = Math.max(0, base - prep);
-        div.querySelector(".timebox").innerHTML =
-          format(base)+"<br>"+format(activation);
-        base = Math.max(0, activation - start);
-        total += prep + start;
-    }
-  });
-
-  document.getElementById("totalTime").innerText="合計: "+total+"秒";
+// 時間フォーマット
+function formatTime(sec){
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${m}分${s}秒`;
 }
 
 // 待つボタン
+document.querySelectorAll('.wait-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+        const sec = parseInt(btn.dataset.seconds);
+        addWait(sec);
+    });
+});
+document.getElementById('waitAdd').addEventListener('click', ()=>{
+    const sec = parseInt(document.getElementById('waitCustom').value);
+    if(sec>0) addWait(sec);
+});
+
 function addWait(sec){
-  addSelected({
-    effect:"待つ",
-    prep_time:0,
-    start_time:sec,
-    name1:"",
-    name2:"",
-    image_url:"",
-    idx:originalData.length
-  });
+    selected.push({effect:'待つ', prep_time:sec, start_time:sec, name1:'待つ', name2:'', level:''});
+    renderSelected();
 }
 
-function addCustomWait(){
-  const sec=Number(document.getElementById("waitInput").value);
-  if(sec>0) addWait(sec);
-  document.getElementById("waitInput").value="";
+// 共有リンク生成
+function updateShareLink(){
+    const data = selected.map(o=>`${o.effect}|${o.prep_time}|${o.start_time}|${o.name1}|${o.name2}|${o.level}`).join(',');
+    const url = location.origin + location.pathname + '?data=' + encodeURIComponent(data);
+    const a = document.getElementById('shareLink');
+    a.href=url;
 }
 
-// リセット
-function resetAll(){
-  document.getElementById("selected").innerHTML="";
-  document.getElementById("totalTime").innerText="合計: 0秒";
-}
-
-// 共有URLコピー
-function copyShareUrl(){
-  const items=document.querySelectorAll("#selected .order");
-  const indices=[];
-  items.forEach(div=>{
-    const idx = div.dataset.idx;
-    if(idx!==undefined) indices.push(idx);
-  });
-  const url=window.location.origin + window.location.pathname + "?orders=" + indices.join(",");
-  navigator.clipboard.writeText(url)
-    .then(()=>alert("URLをコピーしました！"))
-    .catch(()=>alert("コピーに失敗しました"));
-}
-
-// URL復元
-function loadFromUrl(){
-  const params=new URLSearchParams(window.location.search);
-  const orders=params.get("orders");
-  if(!orders) return;
-  const indices=orders.split(",").map(x=>Number(x));
-  const sel=document.getElementById("selected");
-  indices.forEach(i=>{
-    if(originalData[i]){
-      const el=createOrder(originalData[i],true);
-      sel.appendChild(el);
+// URLから復元
+window.addEventListener('load', ()=>{
+    const params = new URLSearchParams(location.search);
+    const data = params.get('data');
+    if(data){
+        selected = data.split(',').map(s=>{
+            const c = s.split('|');
+            return {effect:c[0],prep_time:parseInt(c[1]),start_time:parseInt(c[2]),name1:c[3],name2:c[4],level:c[5]};
+        });
+        renderSelected();
     }
-  });
-  updateTimes();
-}
+});
 </script>
 </body>
 </html>
