@@ -10,15 +10,13 @@ body { font-family: sans-serif; background:#f0f0f0; margin:0; padding:0; }
 #left { width:50%; background:#fff; }
 #right { width:50%; background:#eee; }
 .order { border:1px solid #ccc; margin:5px; padding:5px; background:#fff; cursor:move; }
-.time-display { font-weight:bold; margin-right:5px; }
+.time-display { font-weight:bold; display:block; margin-bottom:2px; }
 .wait-btn { margin:2px; cursor:pointer; }
 </style>
 </head>
 <body>
 <h2>Order Composer CSV版</h2>
-<div>
-<label>CSVファイル: <input type="file" id="csvFile"></label>
-</div>
+
 <div id="container">
 <div id="left">
 <h3>選択オーダー</h3>
@@ -33,6 +31,7 @@ body { font-family: sans-serif; background:#f0f0f0; margin:0; padding:0; }
 <a id="shareLink" href="#">共有リンクをコピー</a>
 </div>
 </div>
+
 <div id="right">
 <h3>オーダー一覧</h3>
 <div id="orderList"></div>
@@ -40,23 +39,42 @@ body { font-family: sans-serif; background:#f0f0f0; margin:0; padding:0; }
 </div>
 
 <script>
-// CSV読み込み
-let orders = [];
-document.getElementById('csvFile').addEventListener('change', function(e){
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function(e){
-        const text = e.target.result;
-        parseCSV(text);
-        renderOrderList();
-    };
-    reader.readAsText(file);
-});
+// GitHubのCSVを直接読み込む
+const csvUrl = "https://raw.githubusercontent.com/MLooooooop-cyber/order-composer-db/main/orders.csv";
 
+let orders = [];
+let selected = [];
+
+fetch(csvUrl)
+  .then(res => res.text())
+  .then(text => {
+      parseCSV(text);
+      renderOrderList();
+      // URLにdataパラメータがあれば復元
+      const params = new URLSearchParams(location.search);
+      const data = params.get('data');
+      if(data){
+          selected = data.split(',').map(s=>{
+              const c = s.split('|');
+              return {
+                  effect:c[0],
+                  prep_time:parseInt(c[1]),
+                  start_time:parseInt(c[2]),
+                  name1:c[3],
+                  name2:c[4],
+                  level:c[5]
+              };
+          });
+      }
+      renderSelected();
+  })
+  .catch(err => console.error("CSV読み込み失敗:", err));
+
+// CSV解析
 function parseCSV(text){
     orders = [];
     const lines = text.split(/\r?\n/);
-    const header = lines.shift().split(',');
+    const header = lines.shift();
     for(const line of lines){
         if(!line.trim()) continue;
         const cols = line.split(',');
@@ -78,7 +96,7 @@ function renderOrderList(){
     orders.forEach((o,i)=>{
         const div = document.createElement('div');
         div.className='order';
-        div.textContent = `${o.effect} (${o.name1}${o.name2?','+o.name2:''}) Lv:${o.level}`;
+        div.textContent = `${o.effect}\n${o.name1}${o.name2?','+o.name2:''}\nLv:${o.level}`;
         div.draggable=true;
         div.addEventListener('dragstart', e=>{
             e.dataTransfer.setData('text/plain', i);
@@ -88,8 +106,7 @@ function renderOrderList(){
     });
 }
 
-// 選択オーダー管理
-let selected = [];
+// 選択オーダーに追加
 function addSelectedOrder(idx){
     const o = Object.assign({}, orders[idx]);
     selected.push(o);
@@ -105,8 +122,8 @@ function renderSelected(){
         const div = document.createElement('div');
         div.className='order';
         const remainingPrep = Math.max(0, 15*60 - elapsed); // 残り準備時間
-        const activation = Math.max(0, remainingPrep - o.prep_time);
-        div.innerHTML = `<span class="time-display">${formatTime(remainingPrep)} / ${formatTime(activation)}</span><br>${o.effect}<br>${o.name1}${o.name2?','+o.name2:''}`;
+        const activation = Math.max(0, remainingPrep - o.prep_time); // 発動時間
+        div.innerHTML = `<span class="time-display">${formatTime(remainingPrep)} / ${formatTime(activation)}</span>${o.effect}<br>${o.name1}${o.name2?','+o.name2:''}`;
         elapsed += o.prep_time + o.start_time;
         container.appendChild(div);
     });
@@ -141,22 +158,8 @@ function addWait(sec){
 function updateShareLink(){
     const data = selected.map(o=>`${o.effect}|${o.prep_time}|${o.start_time}|${o.name1}|${o.name2}|${o.level}`).join(',');
     const url = location.origin + location.pathname + '?data=' + encodeURIComponent(data);
-    const a = document.getElementById('shareLink');
-    a.href=url;
+    document.getElementById('shareLink').href = url;
 }
-
-// URLから復元
-window.addEventListener('load', ()=>{
-    const params = new URLSearchParams(location.search);
-    const data = params.get('data');
-    if(data){
-        selected = data.split(',').map(s=>{
-            const c = s.split('|');
-            return {effect:c[0],prep_time:parseInt(c[1]),start_time:parseInt(c[2]),name1:c[3],name2:c[4],level:c[5]};
-        });
-        renderSelected();
-    }
-});
 </script>
 </body>
 </html>
