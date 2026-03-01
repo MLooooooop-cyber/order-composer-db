@@ -12,7 +12,7 @@ body { font-family: sans-serif; }
 .order-item.dragging { background-color: #d0f0ff; }
 .order-text { display: flex; align-items: center; flex-grow: 1; }
 .order-item img { width: 40px; height: 40px; margin: 0 8px; object-fit: contain; }
-.time-label { font-weight: bold; color: #333; margin-right: 8px; min-width: 60px; text-align: right; }
+.time-label { font-weight: bold; color: #333; margin-right: 8px; min-width: 120px; text-align: right; }
 button { margin: 5px 0; padding: 5px 10px; }
 </style>
 </head>
@@ -90,7 +90,7 @@ function renderOrderList(data){
   enableDragAndDrop();
 }
 
-// 左側に追加（残り時間を左側に表示）
+// 左側に追加（残り準備時間 / 残り発動時間表示）
 function moveToSelected(row){
   const selDiv = document.getElementById('selected-orders');
 
@@ -162,17 +162,20 @@ function formatTime(sec){
   return `${m}分${s}秒`;
 }
 
-// 残り時間更新
+// 残り時間更新（準備時間 / 発動時間）
 function updateRemainingTimes(){
   const items = document.querySelectorAll('#selected-orders .order-item');
-  let remaining = 900; // 15分
+  let remainingPrep = 900;  // 15分 = 900秒
+  let remainingStart = 900;
   items.forEach(div=>{
     const times = div.textContent.match(/(\d+)\+(\d+)秒/);
     if(times){
-      const duration = Number(times[1]) + Number(times[2]);
-      remaining -= duration;
+      const prep = Number(times[1]);
+      const start = Number(times[2]);
+      remainingPrep -= prep;
+      remainingStart -= start;
       const label = div.querySelector('.time-label');
-      label.textContent = formatTime(remaining);
+      label.textContent = `残り準備: ${formatTime(remainingPrep)} / 発動: ${formatTime(remainingStart)}`;
     }
   });
 }
