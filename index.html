@@ -2,164 +2,307 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Order Composer CSV版</title>
+<title>Order Composer</title>
 <style>
-body { font-family: sans-serif; background:#f0f0f0; margin:0; padding:0; }
-#container { display:flex; }
-#left, #right { padding:10px; }
-#left { width:50%; background:#fff; }
-#right { width:50%; background:#eee; }
-.order { border:1px solid #ccc; margin:5px; padding:5px; background:#fff; cursor:move; }
-.time-display { font-weight:bold; display:block; margin-bottom:2px; }
-.wait-btn { margin:2px; cursor:pointer; }
+body{
+  margin:0;
+  background:#f2f2f2;
+  font-family:Arial, Helvetica, sans-serif;
+  font-size:13px;
+}
+.wrapper{
+  width:1200px;
+  margin:20px auto;
+}
+.title{
+  font-size:20px;
+  margin-bottom:10px;
+}
+.main{
+  display:flex;
+  gap:15px;
+}
+.panel{
+  background:#fff;
+  border:1px solid #ccc;
+  padding:10px;
+}
+.left{
+  width:420px;
+}
+.right{
+  flex:1;
+}
+.scroll{
+  height:600px;
+  overflow-y:auto;
+  border:1px solid #ddd;
+  padding:5px;
+}
+.order{
+  display:flex;
+  align-items:center;
+  border:1px solid #e0e0e0;
+  margin-bottom:4px;
+  padding:4px;
+  background:#fafafa;
+  cursor:pointer;
+}
+.order.wait{
+  background:#e8e8e8;
+}
+.order:hover{
+  background:#eef6ff;
+}
+.order img{
+  width:36px;
+  height:36px;
+  object-fit:contain;
+  margin-right:6px;
+}
+.info{
+  flex:1;
+  line-height:1.3;
+  word-break:break-all;
+}
+.timebox{
+  width:120px;
+  text-align:right;
+  font-weight:bold;
+  margin-right:6px;
+  white-space:pre-line;
+}
+.controls{
+  margin-bottom:8px;
+}
+button{
+  font-size:12px;
+  padding:2px 6px;
+  margin-right:4px;
+}
+.total{
+  margin-top:6px;
+  font-weight:bold;
+}
 </style>
 </head>
 <body>
-<h2>Order Composer CSV版</h2>
 
-<div id="container">
-<div id="left">
-<h3>選択オーダー</h3>
-<div id="selectedOrders"></div>
-<div>
-<button class="wait-btn" data-seconds="5">待つ 5秒</button>
-<button class="wait-btn" data-seconds="10">待つ 10秒</button>
-<input type="number" id="waitCustom" placeholder="秒数">
-<button id="waitAdd">待つ追加</button>
-</div>
-<div>
-<a id="shareLink" href="#">共有リンクをコピー</a>
-</div>
-</div>
+<div class="wrapper">
 
-<div id="right">
-<h3>オーダー一覧</h3>
-<div id="orderList"></div>
-</div>
+<div class="title">Order Composer</div>
+
+<div class="main">
+
+<!-- LEFT -->
+<div class="panel left">
+
+<div class="controls">
+  <button onclick="addWait(5)">+5秒</button>
+  <button onclick="addWait(10)">+10秒</button>
+  <input type="number" id="waitInput" style="width:70px;">
+  <button onclick="addCustomWait()">追加</button>
+  <button onclick="resetAll()">リセット</button>
+  <button onclick="copyShareUrl()">共有URLをコピー</button>
 </div>
 
+<div id="selected" class="scroll"></div>
+
+<div class="total" id="totalTime">合計: 0秒</div>
+
+</div>
+
+<!-- RIGHT -->
+<div class="panel right">
+<div id="list" class="scroll"></div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-// GitHubのCSVを直接読み込む
-const csvUrl = "https://raw.githubusercontent.com/MLooooooop-cyber/order-composer-db/main/orders.csv";
 
-let orders = [];
-let selected = [];
+const csvUrl="orders.csv";
+let originalData=[];
 
-fetch(csvUrl)
-  .then(res => res.text())
-  .then(text => {
-      parseCSV(text);
-      renderOrderList();
-      // URLにdataパラメータがあれば復元
-      const params = new URLSearchParams(location.search);
-      const data = params.get('data');
-      if(data){
-          selected = data.split(',').map(s=>{
-              const c = s.split('|');
-              return {
-                  effect:c[0],
-                  prep_time:parseInt(c[1]),
-                  start_time:parseInt(c[2]),
-                  name1:c[3],
-                  name2:c[4],
-                  level:c[5]
-              };
-          });
-      }
-      renderSelected();
-  })
-  .catch(err => console.error("CSV読み込み失敗:", err));
-
-// CSV解析
-function parseCSV(text){
-    orders = [];
-    const lines = text.split(/\r?\n/);
-    const header = lines.shift();
-    for(const line of lines){
-        if(!line.trim()) continue;
-        const cols = line.split(',');
-        orders.push({
-            effect: cols[0],
-            prep_time: parseInt(cols[1]),
-            start_time: parseInt(cols[2]),
-            name1: cols[3],
-            name2: cols[4],
-            level: cols[5]
-        });
-    }
+// 秒 → 分秒フォーマット
+function format(sec){
+  sec=Math.max(0,Math.floor(sec));
+  return Math.floor(sec/60)+"分"+(sec%60)+"秒";
 }
 
-// オーダー一覧表示
-function renderOrderList(){
-    const container = document.getElementById('orderList');
-    container.innerHTML = '';
-    orders.forEach((o,i)=>{
-        const div = document.createElement('div');
-        div.className='order';
-        div.textContent = `${o.effect}\n${o.name1}${o.name2?','+o.name2:''}\nLv:${o.level}`;
-        div.draggable=true;
-        div.addEventListener('dragstart', e=>{
-            e.dataTransfer.setData('text/plain', i);
-        });
-        div.addEventListener('dblclick', ()=>addSelectedOrder(i));
-        container.appendChild(div);
-    });
+// CSV読み込み
+Papa.parse(csvUrl,{
+  download:true,
+  header:true,
+  complete:function(res){
+    originalData=res.data.filter(r=>r.effect).map((r,i)=>({...r, idx:i}));
+    renderList(sortData(originalData));
+    loadFromUrl();
+  }
+});
+
+// ソート(by時間)
+function sortData(data){
+  return [...data].sort((a,b)=>
+    (Number(a.prep_time)+Number(a.start_time))
+    -(Number(b.prep_time)+Number(b.start_time))
+  );
+}
+
+// 右側リスト表示
+function renderList(data){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  data.forEach(row=>{
+    const el=createOrder(row,false);
+    el.ondblclick=()=>addSelected(row);
+    list.appendChild(el);
+  });
+}
+
+// オーダー作成
+function createOrder(row,isSelected){
+  const div=document.createElement("div");
+  div.className="order";
+  div.draggable=isSelected;
+  if(row.effect==="待つ") div.classList.add("wait");
+  if(isSelected){
+    const time=document.createElement("div");
+    time.className="timebox";
+    div.appendChild(time);
+  }
+  const img=document.createElement("img");
+  img.src=row.image_url||"";
+  div.appendChild(img);
+  const info=document.createElement("div");
+  info.className="info";
+  const level=row.level?` (${row.level})`:"";
+  info.innerHTML=
+    row.effect+level+"<br>"+
+    "準備:"+row.prep_time+"秒<br>"+
+    "発動:"+row.start_time+"秒<br>"+
+    (row.name1||"")+(row.name2?","+row.name2:"");
+  div.appendChild(info);
+  div.dataset.idx=row.idx;
+  if(isSelected) enableDrag(div);
+  return div;
 }
 
 // 選択オーダーに追加
-function addSelectedOrder(idx){
-    const o = Object.assign({}, orders[idx]);
-    selected.push(o);
-    renderSelected();
+function addSelected(row){
+  const sel=document.getElementById("selected");
+  const el=createOrder(row,true);
+  sel.appendChild(el);
+  updateTimes();
 }
 
-// 選択リスト描画
-function renderSelected(){
-    const container = document.getElementById('selectedOrders');
-    container.innerHTML = '';
-    let elapsed = 0;
-    selected.forEach((o,i)=>{
-        const div = document.createElement('div');
-        div.className='order';
-        const remainingPrep = Math.max(0, 15*60 - elapsed); // 残り準備時間
-        const activation = Math.max(0, remainingPrep - o.prep_time); // 発動時間
-        div.innerHTML = `<span class="time-display">${formatTime(remainingPrep)} / ${formatTime(activation)}</span>${o.effect}<br>${o.name1}${o.name2?','+o.name2:''}`;
-        elapsed += o.prep_time + o.start_time;
-        container.appendChild(div);
-    });
-    updateShareLink();
+// ドラッグ＆ドロップ有効化
+function enableDrag(el){
+  el.addEventListener("dragstart",()=>el.classList.add("dragging"));
+  el.addEventListener("dragend",()=>{
+    el.classList.remove("dragging");
+    updateTimes();
+  });
+  el.addEventListener("dragover",e=>e.preventDefault());
+  el.addEventListener("drop",e=>{
+    e.preventDefault();
+    const dragging=document.querySelector(".dragging");
+    if(dragging && dragging!==el){
+      el.parentNode.insertBefore(dragging,el);
+    }
+    updateTimes();
+  });
 }
 
-// 時間フォーマット
-function formatTime(sec){
-    const m = Math.floor(sec/60);
-    const s = sec%60;
-    return `${m}分${s}秒`;
+// 時間計算（残り準備時間 / 発動時間）
+function updateTimes(){
+  const items=document.querySelectorAll("#selected .order");
+  let base=900; // 15分
+  let total=0;
+
+  items.forEach(div=>{
+    const prep=parseInt(div.querySelector(".info").innerHTML.match(/準備:(\d+)秒/)?.[1]||0);
+    const start=parseInt(div.querySelector(".info").innerHTML.match(/発動:(\d+)秒/)?.[1]||0);
+    let remainingPrep, activation;
+
+    if(div.classList.contains("wait")){
+      activation = Math.max(0, base - start);
+      remainingPrep = base;
+      div.querySelector(".timebox").innerText = format(remainingPrep)+" / "+format(activation);
+      base = activation;
+      total += start;
+    } else {
+      remainingPrep = base;
+      activation = Math.max(0, remainingPrep - prep);
+      div.querySelector(".timebox").innerText = format(remainingPrep)+" / "+format(activation);
+      base = Math.max(0, activation - start);
+      total += prep + start;
+    }
+  });
+
+  document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
 // 待つボタン
-document.querySelectorAll('.wait-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-        const sec = parseInt(btn.dataset.seconds);
-        addWait(sec);
-    });
-});
-document.getElementById('waitAdd').addEventListener('click', ()=>{
-    const sec = parseInt(document.getElementById('waitCustom').value);
-    if(sec>0) addWait(sec);
-});
-
 function addWait(sec){
-    selected.push({effect:'待つ', prep_time:sec, start_time:sec, name1:'待つ', name2:'', level:''});
-    renderSelected();
+  addSelected({
+    effect:"待つ",
+    prep_time:0,
+    start_time:sec,
+    name1:"",
+    name2:"",
+    image_url:"",
+    idx:originalData.length
+  });
 }
 
-// 共有リンク生成
-function updateShareLink(){
-    const data = selected.map(o=>`${o.effect}|${o.prep_time}|${o.start_time}|${o.name1}|${o.name2}|${o.level}`).join(',');
-    const url = location.origin + location.pathname + '?data=' + encodeURIComponent(data);
-    document.getElementById('shareLink').href = url;
+function addCustomWait(){
+  const sec=Number(document.getElementById("waitInput").value);
+  if(sec>0) addWait(sec);
+  document.getElementById("waitInput").value="";
 }
+
+// リセット
+function resetAll(){
+  document.getElementById("selected").innerHTML="";
+  document.getElementById("totalTime").innerText="合計: 0秒";
+}
+
+// 共有URLコピー
+function copyShareUrl(){
+  const items=document.querySelectorAll("#selected .order");
+  const params=items.map(div=>{
+    if(div.classList.contains("wait")){
+      return `w${div.dataset.idx}`;
+    }
+    return div.dataset.idx;
+  }).join(",");
+  const url=window.location.origin + window.location.pathname + "?orders=" + params;
+  navigator.clipboard.writeText(url)
+    .then(()=>alert("URLをコピーしました！"))
+    .catch(()=>alert("コピーに失敗しました"));
+}
+
+// URL復元
+function loadFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const orders=params.get("orders");
+  if(!orders) return;
+  const indices=orders.split(",");
+  const sel=document.getElementById("selected");
+  indices.forEach(i=>{
+    if(i.startsWith("w")){
+      addWait(Number(i.slice(1)));
+    } else {
+      const idx=Number(i);
+      if(originalData[idx]) addSelected(originalData[idx]);
+    }
+  });
+  updateTimes();
+}
+
 </script>
 </body>
 </html>
