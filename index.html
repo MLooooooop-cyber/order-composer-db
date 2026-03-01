@@ -64,11 +64,14 @@ body{
   flex:1;
   line-height:1.3;
   word-break:break-all;
+  display:flex;
+  flex-direction:column;
 }
 .memo{
   width:100%;
-  margin-top:2px;
+  margin-top:4px;
   font-size:12px;
+  box-sizing:border-box;
 }
 .timebox{
   width:140px;
@@ -93,9 +96,7 @@ button{
 <body>
 
 <div class="wrapper">
-
 <div class="title">Order Composer</div>
-
 <div class="main">
 
 <!-- LEFT -->
@@ -111,7 +112,6 @@ button{
 </div>
 
 <div id="selected" class="scroll"></div>
-
 <div class="total" id="totalTime">合計: 0秒</div>
 
 </div>
@@ -126,10 +126,11 @@ button{
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrl="orders.csv";
+
+const csvUrl="./orders.csv";
 let originalData=[];
 
-// 秒 → 分秒フォーマット
+// 秒→分秒
 function format(sec){
   sec=Math.max(0,Math.floor(sec));
   return Math.floor(sec/60)+"分"+(sec%60)+"秒";
@@ -140,13 +141,23 @@ Papa.parse(csvUrl,{
   download:true,
   header:true,
   complete:function(res){
-    originalData=res.data.filter(r=>r.effect).map((r,i)=>({...r, idx:i}));
+    if(!res.data){
+      alert("CSVが読み込めません");
+      return;
+    }
+    originalData=res.data
+      .filter(r=>r.effect)
+      .map((r,i)=>({...r, idx:i}));
     renderList(sortData(originalData));
     loadFromUrl();
+  },
+  error:function(err){
+    alert("CSV読み込みエラー");
+    console.error(err);
   }
 });
 
-// ソート(by時間)
+// 時間ソート
 function sortData(data){
   return [...data].sort((a,b)=>
     (Number(a.prep_time)+Number(a.start_time))
@@ -154,13 +165,12 @@ function sortData(data){
   );
 }
 
-// 右側リスト表示
+// 右側表示
 function renderList(data){
   const list=document.getElementById("list");
   list.innerHTML="";
   data.forEach(row=>{
     const el=createOrder(row,false);
-    el.ondblclick=()=>{}; // 右側は削除なし
     el.onclick=()=>addSelected(row);
     list.appendChild(el);
   });
@@ -171,7 +181,14 @@ function createOrder(row,isSelected){
   const div=document.createElement("div");
   div.className="order";
   div.draggable=isSelected;
+
   if(row.effect==="待つ") div.classList.add("wait");
+
+  // dataset保存（安全）
+  div.dataset.idx=row.idx;
+  div.dataset.prep=row.prep_time||0;
+  div.dataset.start=row.start_time||0;
+  div.dataset.effect=row.effect;
 
   if(isSelected){
     const time=document.createElement("div");
@@ -185,36 +202,38 @@ function createOrder(row,isSelected){
 
   const info=document.createElement("div");
   info.className="info";
+
   const level=row.level?` (${row.level})`:"";
   info.innerHTML=
     row.effect+level+"<br>"+
     row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+(row.name2?("<br>"+row.name2):"");
-  div.appendChild(info);
+    (row.name1||"")+
+    (row.name2?("<br>"+row.name2):"");
 
-  // メモ欄
+  // メモはinfoの中へ（←重要修正）
   if(isSelected){
     const memo=document.createElement("input");
     memo.type="text";
     memo.placeholder="メモ";
     memo.className="memo";
     memo.oninput=updateTimes;
-    div.appendChild(memo);
+    info.appendChild(memo);
   }
 
-  div.dataset.idx=row.idx;
+  div.appendChild(info);
+
   if(isSelected){
     enableDrag(div);
-    // ダブルクリックで削除
     div.ondblclick=()=>{
       div.remove();
       updateTimes();
     };
   }
+
   return div;
 }
 
-// 選択オーダーに追加
+// 選択追加
 function addSelected(row){
   const sel=document.getElementById("selected");
   const el=createOrder(row,true);
@@ -222,7 +241,7 @@ function addSelected(row){
   updateTimes();
 }
 
-// ドラッグ＆ドロップ有効化
+// ドラッグ
 function enableDrag(el){
   el.addEventListener("dragstart",()=>el.classList.add("dragging"));
   el.addEventListener("dragend",()=>{
@@ -240,39 +259,38 @@ function enableDrag(el){
   });
 }
 
-// 時間計算（待つ対応）
+// 時間計算
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
-  let base=900; // 15分
+  let base=900;
   let total=0;
 
   items.forEach(div=>{
-    const m=div.innerHTML.match(/(\d+)\+(\d+)秒/);
-    if(!m) return;
+    const prep=Number(div.dataset.prep);
+    const start=Number(div.dataset.start);
+    const effect=div.dataset.effect;
 
-    const prep=Number(m[1]);
-    const start=Number(m[2]);
     let activation;
 
-    if(div.classList.contains("wait")){
-        activation = Math.max(0, base - start);
-        div.querySelector(".timebox").innerHTML =
-          "残り時間 "+format(base)+"<br>発動 "+format(activation);
-        base = activation;
-        total += start;
-    } else {
-        activation = Math.max(0, base - prep);
-        div.querySelector(".timebox").innerHTML =
-          "残り時間 "+format(base)+"<br>発動 "+format(activation);
-        base = Math.max(0, activation - start);
-        total += prep + start;
+    if(effect==="待つ"){
+      activation=Math.max(0,base-start);
+      div.querySelector(".timebox").innerHTML=
+        "残り時間 "+format(base)+"<br>発動 "+format(activation);
+      base=activation;
+      total+=start;
+    }else{
+      activation=Math.max(0,base-prep);
+      div.querySelector(".timebox").innerHTML=
+        "残り時間 "+format(base)+"<br>発動 "+format(activation);
+      base=Math.max(0,activation-start);
+      total+=prep+start;
     }
   });
 
   document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
-// 待つボタン
+// 待つ
 function addWait(sec){
   addSelected({
     effect:"待つ",
@@ -281,7 +299,7 @@ function addWait(sec){
     name1:"",
     name2:"",
     image_url:"",
-    idx:originalData.length
+    idx:"wait_"+Date.now()
   });
 }
 
@@ -297,22 +315,23 @@ function resetAll(){
   document.getElementById("totalTime").innerText="合計: 0秒";
 }
 
-// 共有URLコピー（メモも保存）
+// 共有URL
 function copyShareUrl(){
   const items=document.querySelectorAll("#selected .order");
   const data=[];
   items.forEach(div=>{
-    const idx = div.dataset.idx;
+    const idx=div.dataset.idx;
     const memo=div.querySelector(".memo")?.value||"";
     data.push({idx,memo});
   });
-  const url=window.location.origin + window.location.pathname + "?orders=" + encodeURIComponent(JSON.stringify(data));
+  const url=window.location.origin+window.location.pathname+
+    "?orders="+encodeURIComponent(JSON.stringify(data));
   navigator.clipboard.writeText(url)
     .then(()=>alert("URLをコピーしました！"))
     .catch(()=>alert("コピーに失敗しました"));
 }
 
-// URL復元（メモも復元）
+// URL復元
 function loadFromUrl(){
   const params=new URLSearchParams(window.location.search);
   const orders=params.get("orders");
@@ -321,7 +340,7 @@ function loadFromUrl(){
     const data=JSON.parse(decodeURIComponent(orders));
     const sel=document.getElementById("selected");
     data.forEach(o=>{
-      const row=originalData[o.idx];
+      const row=originalData.find(r=>String(r.idx)===String(o.idx));
       if(row){
         const el=createOrder(row,true);
         el.querySelector(".memo").value=o.memo||"";
@@ -331,6 +350,7 @@ function loadFromUrl(){
     updateTimes();
   }catch(e){}
 }
+
 </script>
 </body>
 </html>
