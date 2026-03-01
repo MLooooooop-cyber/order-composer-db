@@ -4,38 +4,26 @@
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: left; }
-  th { background-color: #f0f0f0; }
-  tr:nth-child(even) { background-color: #f9f9f9; }
-  tbody tr.dragging { background-color: #d0f0ff; }
-  td.time { text-align: right; }
+  body { font-family: sans-serif; padding: 20px; display: flex; }
+  #order-list { width: 300px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
+  .order-item { padding: 5px 10px; margin-bottom: 4px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; }
+  .order-item.dragging { background-color: #d0f0ff; }
+  #details { flex: 1; }
   button { margin: 5px 0; padding: 5px 10px; }
 </style>
 </head>
 <body>
-<h1>オーダーコンポーザー（全部 by 時間）</h1>
 
-<table id="order-table">
-  <thead>
-    <tr>
-      <th>効果</th>
-      <th>レベル</th>
-      <th>準備時間</th>
-      <th>発動時間</th>
-      <th>名前1</th>
-      <th>名前2</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- CSVデータがここに挿入されます -->
-  </tbody>
-</table>
+<div id="order-list">
+  <h3>全部(by時間)</h3>
+  <!-- オーダーリストがここに表示されます -->
+</div>
 
-<button id="calculate-time">合計時間を計算</button>
-<button id="reset-order">順番リセット</button>
-<p id="total-time">合計時間：0</p>
+<div id="details">
+  <button id="calculate-time">合計時間を計算</button>
+  <button id="reset-order">順番リセット</button>
+  <p id="total-time">合計時間：0</p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
@@ -48,7 +36,7 @@ Papa.parse(csvUrl, {
   header: true,
   complete: function(results) {
     originalData = results.data.filter(row => row.effect);
-    renderTable(sortByTime(originalData));
+    renderList(sortByTime(originalData));
   },
   error: function(err) {
     console.error('CSV読み込み失敗', err);
@@ -61,51 +49,45 @@ function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
 
-// テーブル描画
-function renderTable(data) {
-  const tbody = document.getElementById('order-table').querySelector('tbody');
-  tbody.innerHTML = '';
+// オーダーリスト描画
+function renderList(data) {
+  const listDiv = document.getElementById('order-list');
+  listDiv.querySelectorAll('.order-item').forEach(el => el.remove());
   data.forEach((row,index)=>{
-    const tr = document.createElement('tr');
-    tr.setAttribute('draggable','true');
-    tr.dataset.index = index;
-    tr.innerHTML = `
-      <td>${row.effect}</td>
-      <td>${row.level}</td>
-      <td class="time">${row.prep_time}</td>
-      <td class="time">${row.start_time}</td>
-      <td>${row.name1}</td>
-      <td>${row.name2 || ''}</td>
-    `;
-    tbody.appendChild(tr);
+    const div = document.createElement('div');
+    div.className = 'order-item';
+    div.draggable = true;
+    div.dataset.index = index;
+    div.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+    listDiv.appendChild(div);
   });
   enableDragAndDrop();
 }
 
 // ドラッグ＆ドロップ
 function enableDragAndDrop() {
-  const tbody = document.getElementById('order-table').querySelector('tbody');
+  const list = document.getElementById('order-list');
   let dragSrc = null;
 
-  tbody.querySelectorAll('tr').forEach(tr => {
-    tr.addEventListener('dragstart', e => {
-      dragSrc = tr;
-      tr.classList.add('dragging');
+  list.querySelectorAll('.order-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      item.classList.add('dragging');
     });
-    tr.addEventListener('dragend', e => {
-      tr.classList.remove('dragging');
+    item.addEventListener('dragend', e => {
+      item.classList.remove('dragging');
     });
-    tr.addEventListener('dragover', e => e.preventDefault());
-    tr.addEventListener('drop', e => {
+    item.addEventListener('dragover', e => e.preventDefault());
+    item.addEventListener('drop', e => {
       e.preventDefault();
-      if(dragSrc && dragSrc !== tr){
-        const nodes = Array.from(tbody.children);
+      if(dragSrc && dragSrc !== item){
+        const nodes = Array.from(list.querySelectorAll('.order-item'));
         const dragIndex = nodes.indexOf(dragSrc);
-        const dropIndex = nodes.indexOf(tr);
+        const dropIndex = nodes.indexOf(item);
         if(dragIndex < dropIndex){
-          tbody.insertBefore(dragSrc, tr.nextSibling);
+          list.insertBefore(dragSrc, item.nextSibling);
         } else {
-          tbody.insertBefore(dragSrc, tr);
+          list.insertBefore(dragSrc, item);
         }
       }
     });
@@ -114,18 +96,22 @@ function enableDragAndDrop() {
 
 // 合計時間計算
 document.getElementById('calculate-time').addEventListener('click', ()=>{
-  const tbody = document.getElementById('order-table').querySelector('tbody');
+  const items = document.querySelectorAll('#order-list .order-item');
   let total = 0;
-  tbody.querySelectorAll('tr').forEach(tr=>{
-    total += Number(tr.children[2].textContent) + Number(tr.children[3].textContent);
+  items.forEach(div=>{
+    const times = div.textContent.match(/(\d+)\+(\d+)秒/);
+    if(times){
+      total += Number(times[1]) + Number(times[2]);
+    }
   });
-  document.getElementById('total-time').textContent = `合計時間：${total}`;
+  document.getElementById('total-time').textContent = `合計時間：${total}秒`;
 });
 
 // 順番リセット
 document.getElementById('reset-order').addEventListener('click', ()=>{
-  renderTable(sortByTime(originalData));
+  renderList(sortByTime(originalData));
 });
 </script>
+
 </body>
 </html>
