@@ -76,6 +76,7 @@ body{
 .info{
   flex:1;
   line-height:1.3;
+  word-break:break-all;
 }
 
 .timebox{
@@ -118,6 +119,7 @@ button{
   <input type="number" id="waitInput" style="width:70px;">
   <button onclick="addCustomWait()">追加</button>
   <button onclick="resetAll()">リセット</button>
+  <button onclick="copyShareUrl()">共有URLをコピー</button>
 </div>
 
 <div id="selected" class="scroll"></div>
@@ -140,20 +142,24 @@ button{
 const csvUrl="orders.csv";
 let originalData=[];
 
+// 秒 → 分秒フォーマット
 function format(sec){
   sec=Math.max(0,Math.floor(sec));
   return Math.floor(sec/60)+"分"+(sec%60)+"秒";
 }
 
+// CSV読み込み
 Papa.parse(csvUrl,{
   download:true,
   header:true,
   complete:function(res){
-    originalData=res.data.filter(r=>r.effect);
+    originalData=res.data.filter(r=>r.effect).map((r,i)=>({...r, idx:i}));
     renderList(sortData(originalData));
+    loadFromUrl();
   }
 });
 
+// ソート(by時間)
 function sortData(data){
   return [...data].sort((a,b)=>
     (Number(a.prep_time)+Number(a.start_time))
@@ -161,6 +167,7 @@ function sortData(data){
   );
 }
 
+// 右側リスト表示
 function renderList(data){
   const list=document.getElementById("list");
   list.innerHTML="";
@@ -171,40 +178,34 @@ function renderList(data){
   });
 }
 
+// オーダー作成
 function createOrder(row,isSelected){
   const div=document.createElement("div");
   div.className="order";
   div.draggable=isSelected;
-
   if(row.effect==="待つ") div.classList.add("wait");
-
   if(isSelected){
     const time=document.createElement("div");
     time.className="timebox";
     div.appendChild(time);
   }
-
   const img=document.createElement("img");
   img.src=row.image_url||"";
   div.appendChild(img);
-
   const info=document.createElement("div");
   info.className="info";
-
   const level=row.level?` (${row.level})`:"";
-
   info.innerHTML=
     row.effect+level+"<br>"+
     row.prep_time+"+"+row.start_time+"秒<br>"+
     (row.name1||"")+(row.name2?","+row.name2:"");
-
   div.appendChild(info);
-
+  div.dataset.idx=row.idx;
   if(isSelected) enableDrag(div);
-
   return div;
 }
 
+// 選択オーダーに追加
 function addSelected(row){
   const sel=document.getElementById("selected");
   const el=createOrder(row,true);
@@ -212,6 +213,7 @@ function addSelected(row){
   updateTimes();
 }
 
+// ドラッグ＆ドロップ有効化
 function enableDrag(el){
   el.addEventListener("dragstart",()=>el.classList.add("dragging"));
   el.addEventListener("dragend",()=>{
@@ -229,9 +231,10 @@ function enableDrag(el){
   });
 }
 
+// 時間計算（待つ対応）
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
-  let base=900;
+  let base=900; // 15分
   let total=0;
 
   items.forEach(div=>{
@@ -240,24 +243,18 @@ function updateTimes(){
 
     const prep=Number(m[1]);
     const start=Number(m[2]);
-
     let activation;
 
     if(div.classList.contains("wait")){
-        // 🔵 待つは prep扱い（start無視）
         activation = Math.max(0, base - start);
         div.querySelector(".timebox").innerHTML =
           format(base)+"<br>"+format(activation);
-
         base = activation;
         total += start;
-
     } else {
-        // 🟢 通常オーダー
         activation = Math.max(0, base - prep);
         div.querySelector(".timebox").innerHTML =
           format(base)+"<br>"+format(activation);
-
         base = Math.max(0, activation - start);
         total += prep + start;
     }
@@ -266,6 +263,7 @@ function updateTimes(){
   document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
+// 待つボタン
 function addWait(sec){
   addSelected({
     effect:"待つ",
@@ -273,7 +271,8 @@ function addWait(sec){
     start_time:sec,
     name1:"",
     name2:"",
-    image_url:""
+    image_url:"",
+    idx:originalData.length
   });
 }
 
@@ -283,11 +282,41 @@ function addCustomWait(){
   document.getElementById("waitInput").value="";
 }
 
+// リセット
 function resetAll(){
   document.getElementById("selected").innerHTML="";
   document.getElementById("totalTime").innerText="合計: 0秒";
 }
 
+// 共有URLコピー
+function copyShareUrl(){
+  const items=document.querySelectorAll("#selected .order");
+  const indices=[];
+  items.forEach(div=>{
+    const idx = div.dataset.idx;
+    if(idx!==undefined) indices.push(idx);
+  });
+  const url=window.location.origin + window.location.pathname + "?orders=" + indices.join(",");
+  navigator.clipboard.writeText(url)
+    .then(()=>alert("URLをコピーしました！"))
+    .catch(()=>alert("コピーに失敗しました"));
+}
+
+// URL復元
+function loadFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const orders=params.get("orders");
+  if(!orders) return;
+  const indices=orders.split(",").map(x=>Number(x));
+  const sel=document.getElementById("selected");
+  indices.forEach(i=>{
+    if(originalData[i]){
+      const el=createOrder(originalData[i],true);
+      sel.appendChild(el);
+    }
+  });
+  updateTimes();
+}
 </script>
 </body>
 </html>
