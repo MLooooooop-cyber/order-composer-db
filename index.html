@@ -2,209 +2,190 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>オーダーコンポーザー（CSV版）</title>
+<title>オーダーコンポーザー</title>
 <style>
 body { font-family: sans-serif; }
-#composer-container { display: flex; padding: 20px; }
-#selected-orders, #order-list { width: 380px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; display: flex; align-items: flex-start; background-color: #f9f9f9; }
-.order-item.dragging { background-color: #d0f0ff; }
-.order-text { display: flex; flex-direction: column; flex-grow: 1; }
-.order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
-.time-label { font-weight: bold; color: #333; margin-right: 8px; min-width: 120px; text-align: right; display: flex; flex-direction: column; }
-button { margin: 5px 0; padding: 5px 10px; }
+#container { display:flex; gap:20px; padding:20px; }
+.panel { width:400px; border:1px solid #aaa; padding:10px; }
+.order-item {
+  border:1px solid #ccc;
+  padding:6px;
+  margin-bottom:6px;
+  background:#f9f9f9;
+  display:flex;
+  align-items:flex-start;
+  cursor:grab;
+}
+.order-item img {
+  width:40px;
+  height:40px;
+  object-fit:contain;
+  margin-right:8px;
+}
+.order-text { display:flex; flex-direction:column; }
+.time-label {
+  min-width:120px;
+  font-weight:bold;
+  margin-right:8px;
+  text-align:right;
+  display:flex;
+  flex-direction:column;
+}
+button { margin-top:10px; }
 </style>
 </head>
 <body>
 
-<h2>オーダーコンポーザー（CSV版）</h2>
-<div id="composer-container">
-  <div id="selected-orders">
+<h2>オーダーコンポーザー</h2>
+
+<div id="container">
+
+  <div class="panel">
     <h3>選択オーダー</h3>
+    <div id="selected"></div>
+    <button id="reset">リセット</button>
   </div>
 
-  <div id="order-list">
+  <div class="panel">
     <h3>全部(by時間)</h3>
+    <div id="list"></div>
   </div>
 
-  <div id="composer-controls">
-    <button id="calculate-time">合計時間を計算</button>
-    <button id="reset-order">順番リセット</button>
-    <p id="total-time">合計時間：0秒</p>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrl = 'orders.csv';  // GitHubにアップロードしたCSV
+
+const csvUrl = "orders.csv";
 let originalData = [];
 
-Papa.parse(csvUrl, {
-  download: true,
-  header: true,
-  complete: function(results) {
-    originalData = results.data.filter(row => row.effect);
-    renderOrderList(sortByTime(originalData));
-  },
-  error: function(err){
-    console.error('CSV読み込み失敗', err);
-    alert('データ読み込みに失敗しました。CSVの形式を確認してください。');
-  }
-});
-
-function sortByTime(data) {
-  return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
-}
-
-function renderOrderList(data){
-  const listDiv = document.getElementById('order-list');
-  listDiv.querySelectorAll('.order-item').forEach(el=>el.remove());
-
-  data.forEach(row=>{
-    const div = document.createElement('div');
-    div.className = 'order-item';
-    div.draggable = true;
-
-    const textContainer = document.createElement('div');
-    textContainer.className = 'order-text';
-
-    const img = document.createElement('img');
-    img.src = row.image_url || '';
-    img.alt = row.name1;
-    textContainer.appendChild(img);
-
-    const levelText = row.level ? ` (${row.level})` : '';
-    const effectDiv = document.createElement('div');
-    effectDiv.textContent = `${row.effect}${levelText}`;
-    const timeDiv = document.createElement('div');
-    timeDiv.textContent = `${row.prep_time}+${row.start_time}秒`;
-    const nameDiv = document.createElement('div');
-    nameDiv.textContent = `${row.name1}${row.name2?','+row.name2:''}`;
-
-    textContainer.appendChild(effectDiv);
-    textContainer.appendChild(timeDiv);
-    textContainer.appendChild(nameDiv);
-
-    div.appendChild(textContainer);
-    div.addEventListener('dblclick', ()=>moveToSelected(row));
-
-    listDiv.appendChild(div);
-  });
-  enableDragAndDrop();
-}
-
-function moveToSelected(row){
-  const selDiv = document.getElementById('selected-orders');
-  const div = document.createElement('div');
-  div.className = 'order-item';
-  div.draggable = true;
-
-  const timeLabel = document.createElement('div');
-  timeLabel.className = 'time-label';
-  div.appendChild(timeLabel);
-
-  const textContainer = document.createElement('div');
-  textContainer.className = 'order-text';
-
-  const img = document.createElement('img');
-  img.src = row.image_url || '';
-  img.alt = row.name1;
-  textContainer.appendChild(img);
-
-  const levelText = row.level ? ` (${row.level})` : '';
-  const effectDiv = document.createElement('div');
-  effectDiv.textContent = `${row.effect}${levelText}`;
-  const timeDiv = document.createElement('div');
-  timeDiv.textContent = `${row.prep_time}+${row.start_time}秒`;
-  const nameDiv = document.createElement('div');
-  nameDiv.textContent = `${row.name1}${row.name2?','+row.name2:''}`;
-
-  textContainer.appendChild(effectDiv);
-  textContainer.appendChild(timeDiv);
-  textContainer.appendChild(nameDiv);
-
-  div.appendChild(textContainer);
-  selDiv.appendChild(div);
-  enableDragAndDrop();
-  updateRemainingTimes();
-}
-
-function enableDragAndDrop(){
-  const lists = [document.getElementById('order-list'), document.getElementById('selected-orders')];
-  let dragSrc = null;
-  lists.forEach(list=>{
-    list.querySelectorAll('.order-item').forEach(item=>{
-      item.addEventListener('dragstart', e=>{
-        dragSrc = item;
-        item.classList.add('dragging');
-      });
-      item.addEventListener('dragend', e=>{
-        item.classList.remove('dragging');
-        updateRemainingTimes();
-      });
-      item.addEventListener('dragover', e=>e.preventDefault());
-      item.addEventListener('drop', e=>{
-        e.preventDefault();
-        if(dragSrc && dragSrc !== item){
-          const nodes = Array.from(list.querySelectorAll('.order-item'));
-          const dragIndex = nodes.indexOf(dragSrc);
-          const dropIndex = nodes.indexOf(item);
-          if(dragIndex < dropIndex){
-            list.insertBefore(dragSrc, item.nextSibling);
-          } else {
-            list.insertBefore(dragSrc, item);
-          }
-          updateRemainingTimes();
-        }
-      });
-    });
-  });
-}
-
 function formatTime(sec){
-  sec = Math.max(0, sec);
+  sec = Math.max(0, Math.floor(sec));
   const m = Math.floor(sec/60);
   const s = sec%60;
   return `${m}分${s}秒`;
 }
 
-// 残り時間更新（残り準備 = 15分 − 選択済みオーダーの prep_time+start_time 合計）
-// 発動 = prep_time − start_time
-function updateRemainingTimes(){
-  const items = document.querySelectorAll('#selected-orders .order-item');
-  let totalElapsed = 0;
-  items.forEach(div=>{
-    const times = div.textContent.match(/(\d+)\+(\d+)秒/);
-    if(times){
-      const prep = Number(times[1]);
-      const start = Number(times[2]);
-      const remainingPrep = Math.max(0, 900 - totalElapsed);  // 15分=900秒
-      const remainingStart = Math.max(0, prep - start);
-      const label = div.querySelector('.time-label');
-      label.innerHTML = `残り準備: ${formatTime(remainingPrep)}<br>発動: ${formatTime(remainingStart)}`;
-      totalElapsed += prep + start;
-    }
+Papa.parse(csvUrl,{
+  download:true,
+  header:true,
+  complete:function(res){
+    originalData = res.data.filter(r=>r.effect);
+    renderList(sortByTime(originalData));
+  }
+});
+
+function sortByTime(data){
+  return [...data].sort((a,b)=>
+    (Number(a.prep_time)+Number(a.start_time))
+    -(Number(b.prep_time)+Number(b.start_time))
+  );
+}
+
+function renderList(data){
+  const list = document.getElementById("list");
+  list.innerHTML="";
+  data.forEach(row=>{
+    const div=createOrderItem(row,false);
+    div.addEventListener("dblclick",()=>addSelected(row));
+    list.appendChild(div);
+  });
+  enableDrag();
+}
+
+function createOrderItem(row,isSelected){
+  const div=document.createElement("div");
+  div.className="order-item";
+  div.draggable=true;
+
+  if(isSelected){
+    const timeLabel=document.createElement("div");
+    timeLabel.className="time-label";
+    div.appendChild(timeLabel);
+  }
+
+  const img=document.createElement("img");
+  img.src=row.image_url||"";
+  div.appendChild(img);
+
+  const text=document.createElement("div");
+  text.className="order-text";
+
+  const level=row.level?` (${row.level})`:"";
+
+  text.innerHTML=
+    `${row.effect}${level}<br>`+
+    `${row.prep_time}+${row.start_time}秒<br>`+
+    `${row.name1}${row.name2?","+row.name2:""}`;
+
+  div.appendChild(text);
+
+  return div;
+}
+
+function addSelected(row){
+  const sel=document.getElementById("selected");
+  const div=createOrderItem(row,true);
+  sel.appendChild(div);
+  enableDrag();
+  updateTimes();
+}
+
+function enableDrag(){
+  const containers=[document.getElementById("selected")];
+
+  containers.forEach(container=>{
+    container.querySelectorAll(".order-item").forEach(item=>{
+      item.addEventListener("dragstart",e=>{
+        item.classList.add("dragging");
+      });
+      item.addEventListener("dragend",e=>{
+        item.classList.remove("dragging");
+        updateTimes();
+      });
+      item.addEventListener("dragover",e=>e.preventDefault());
+      item.addEventListener("drop",e=>{
+        e.preventDefault();
+        const dragging=document.querySelector(".dragging");
+        if(dragging && dragging!==item){
+          container.insertBefore(dragging,item);
+        }
+        updateTimes();
+      });
+    });
   });
 }
 
-document.getElementById('calculate-time').addEventListener('click', ()=>{
-  const items = document.querySelectorAll('#selected-orders .order-item');
-  let total = 0;
+/* ===========================
+   正式確定ロジック
+=========================== */
+
+function updateTimes(){
+  const items=document.querySelectorAll("#selected .order-item");
+  let baseTime=900;
+
   items.forEach(div=>{
-    const times = div.textContent.match(/(\d+)\+(\d+)秒/);
-    if(times){
-      total += Number(times[1]) + Number(times[2]);
-    }
+    const match=div.innerHTML.match(/(\d+)\+(\d+)秒/);
+    if(!match)return;
+
+    const prep=Number(match[1]);
+    const start=Number(match[2]);
+
+    const activation=Math.max(0,baseTime-prep);
+
+    const label=div.querySelector(".time-label");
+    label.innerHTML=
+      `残り準備: ${formatTime(baseTime)}<br>`+
+      `発動: ${formatTime(activation)}`;
+
+    baseTime=Math.max(0,activation-start);
   });
-  document.getElementById('total-time').textContent = `合計時間：${total}秒`;
-  updateRemainingTimes();
+}
+
+document.getElementById("reset").addEventListener("click",()=>{
+  document.getElementById("selected").innerHTML="";
 });
 
-document.getElementById('reset-order').addEventListener('click', ()=>{
-  renderOrderList(sortByTime(originalData));
-  document.getElementById('selected-orders').querySelectorAll('.order-item').forEach(el=>el.remove());
-  document.getElementById('total-time').textContent = '合計時間：0秒';
-});
 </script>
 </body>
 </html>
