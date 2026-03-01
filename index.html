@@ -4,129 +4,55 @@
 <meta charset="UTF-8">
 <title>Order Composer</title>
 <style>
-body{
-  margin:0;
-  background:#f2f2f2;
-  font-family:Arial, Helvetica, sans-serif;
-  font-size:13px;
-}
-.wrapper{
-  width:1200px;
-  margin:20px auto;
-}
-.title{
-  font-size:20px;
-  margin-bottom:10px;
-}
-.main{
-  display:flex;
-  gap:15px;
-}
-.panel{
-  background:#fff;
-  border:1px solid #ccc;
-  padding:10px;
-}
-.left{
-  width:420px;
-}
-.right{
-  flex:1;
-}
-.scroll{
-  height:600px;
-  overflow-y:auto;
-  border:1px solid #ddd;
-  padding:5px;
-}
-.order{
-  display:flex;
-  align-items:center;
-  border:1px solid #e0e0e0;
-  margin-bottom:4px;
-  padding:4px;
-  background:#fafafa;
-  cursor:pointer;
-}
-.order.wait{
-  background:#e8e8e8;
-}
-.order:hover{
-  background:#eef6ff;
-}
-.order img{
-  width:36px;
-  height:36px;
-  object-fit:contain;
-  margin-right:6px;
-}
-.info{
-  flex:1;
-  line-height:1.3;
-  word-break:break-all;
-}
-.timebox{
-  width:120px;
-  text-align:right;
-  font-weight:bold;
-  margin-right:6px;
-  white-space:pre-line;
-}
-.controls{
-  margin-bottom:8px;
-}
-button{
-  font-size:12px;
-  padding:2px 6px;
-  margin-right:4px;
-}
-.total{
-  margin-top:6px;
-  font-weight:bold;
-}
+body{margin:0;background:#f2f2f2;font-family:Arial, Helvetica, sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+.order{display:flex;align-items:center;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
+.order:hover{background:#eef6ff;}
+.order.wait{background:#e8e8e8;}
+.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
+.info{flex:1;line-height:1.3;word-break:break-all;}
+.timebox{width:120px;text-align:right;font-weight:bold;margin-right:6px;}
+.controls{margin-bottom:8px;}
+button{font-size:12px;padding:2px 6px;margin-right:4px;}
+.total{margin-top:6px;font-weight:bold;}
 </style>
 </head>
 <body>
-
 <div class="wrapper">
+  <div class="title">Order Composer</div>
+  <div class="main">
+    <!-- LEFT -->
+    <div class="panel left">
+      <div class="controls">
+        <button onclick="addWait(5)">+5秒</button>
+        <button onclick="addWait(10)">+10秒</button>
+        <input type="number" id="waitInput" style="width:70px;">
+        <button onclick="addCustomWait()">追加</button>
+        <button onclick="resetAll()">リセット</button>
+        <button onclick="copyShareUrl()">共有URLをコピー</button>
+      </div>
+      <div id="selected" class="scroll"></div>
+      <div class="total" id="totalTime">合計: 0秒</div>
+    </div>
 
-<div class="title">Order Composer</div>
-
-<div class="main">
-
-<!-- LEFT -->
-<div class="panel left">
-
-<div class="controls">
-  <button onclick="addWait(5)">+5秒</button>
-  <button onclick="addWait(10)">+10秒</button>
-  <input type="number" id="waitInput" style="width:70px;">
-  <button onclick="addCustomWait()">追加</button>
-  <button onclick="resetAll()">リセット</button>
-  <button onclick="copyShareUrl()">共有URLをコピー</button>
-</div>
-
-<div id="selected" class="scroll"></div>
-
-<div class="total" id="totalTime">合計: 0秒</div>
-
-</div>
-
-<!-- RIGHT -->
-<div class="panel right">
-<div id="list" class="scroll"></div>
-</div>
-
-</div>
+    <!-- RIGHT -->
+    <div class="panel right">
+      <div id="list" class="scroll"></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-
 const csvUrl="orders.csv";
 let originalData=[];
 
-// 秒 → 分秒フォーマット
 function format(sec){
   sec=Math.max(0,Math.floor(sec));
   return Math.floor(sec/60)+"分"+(sec%60)+"秒";
@@ -181,8 +107,7 @@ function createOrder(row,isSelected){
   const level=row.level?` (${row.level})`:"";
   info.innerHTML=
     row.effect+level+"<br>"+
-    "準備:"+row.prep_time+"秒<br>"+
-    "発動:"+row.start_time+"秒<br>"+
+    row.prep_time+"+"+row.start_time+"秒<br>"+
     (row.name1||"")+(row.name2?","+row.name2:"");
   div.appendChild(info);
   div.dataset.idx=row.idx;
@@ -216,29 +141,33 @@ function enableDrag(el){
   });
 }
 
-// 時間計算（残り準備時間 / 発動時間）
+// 時間計算
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
   let base=900; // 15分
   let total=0;
 
   items.forEach(div=>{
-    const prep=parseInt(div.querySelector(".info").innerHTML.match(/準備:(\d+)秒/)?.[1]||0);
-    const start=parseInt(div.querySelector(".info").innerHTML.match(/発動:(\d+)秒/)?.[1]||0);
-    let remainingPrep, activation;
+    const m=div.innerHTML.match(/(\d+)\+(\d+)秒/);
+    let prep=0,start=0;
+    if(m){
+      prep=Number(m[1]);
+      start=Number(m[2]);
+    }
 
+    let activation;
     if(div.classList.contains("wait")){
-      activation = Math.max(0, base - start);
-      remainingPrep = base;
-      div.querySelector(".timebox").innerText = format(remainingPrep)+" / "+format(activation);
-      base = activation;
-      total += start;
+        activation = Math.max(0, base - start);
+        div.querySelector(".timebox").innerHTML =
+          format(base)+"<br>"+format(activation);
+        base = activation;
+        total += start;
     } else {
-      remainingPrep = base;
-      activation = Math.max(0, remainingPrep - prep);
-      div.querySelector(".timebox").innerText = format(remainingPrep)+" / "+format(activation);
-      base = Math.max(0, activation - start);
-      total += prep + start;
+        activation = Math.max(0, base - prep);
+        div.querySelector(".timebox").innerHTML =
+          format(base)+"<br>"+format(activation);
+        base = Math.max(0, activation - start);
+        total += prep + start;
     }
   });
 
@@ -273,19 +202,19 @@ function resetAll(){
 // 共有URLコピー
 function copyShareUrl(){
   const items=document.querySelectorAll("#selected .order");
-  const params=items.map(div=>{
-    // 待つの場合は w + 秒数 を識別子に
+  const arr=[];
+  items.forEach(div=>{
     if(div.classList.contains("wait")){
-      return `w${div.querySelector(".info").innerText.match(/発動:(\d+)秒/)?.[1]||0}`;
+      const sec=div.querySelector(".info").innerHTML.match(/(\d+)秒/);
+      arr.push(`w${sec?sec[1]:0}`);
+    } else {
+      arr.push(div.dataset.idx);
     }
-    return div.dataset.idx;
-  }).join(",");
-
-  const url = window.location.origin + window.location.pathname + "?orders=" + params;
-
+  });
+  const url=window.location.origin+window.location.pathname+"?orders="+arr.join(",");
   navigator.clipboard.writeText(url)
     .then(()=>alert("共有用URLをコピーしました！"))
-    .catch(()=>alert("共有用URLのコピーに失敗しました"));
+    .catch(()=>alert("コピーに失敗しました"));
 }
 
 // URL復元
@@ -293,19 +222,17 @@ function loadFromUrl(){
   const params=new URLSearchParams(window.location.search);
   const orders=params.get("orders");
   if(!orders) return;
-  const indices=orders.split(",");
+  const arr=orders.split(",");
   const sel=document.getElementById("selected");
-  indices.forEach(i=>{
-    if(i.startsWith("w")){
-      addWait(Number(i.slice(1)));
+  arr.forEach(id=>{
+    if(id.startsWith("w")){
+      addWait(Number(id.slice(1)));
     } else {
-      const idx=Number(i);
-      if(originalData[idx]) addSelected(originalData[idx]);
+      const i=Number(id);
+      if(originalData[i]) addSelected(originalData[i]);
     }
   });
-  updateTimes();
 }
-
 </script>
 </body>
 </html>
