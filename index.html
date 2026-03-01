@@ -118,6 +118,7 @@ function render() {
     return;
   }
 
+  let totalCost = 0, totalDuration = 0;
   filtered.forEach(order => {
     const card = document.createElement("div");
     card.className = `card rarity-${order.rarity}`;
@@ -126,28 +127,17 @@ function render() {
       <h3>${order.name}</h3>
       <p><strong>レア:</strong> ${order.rarity} / <strong>コスト:</strong> ${order.cost}</p>
       <p>${order.effect}</p>
-      <small>持続時間: ${order.duration || "-"}秒 / ${order.note || ""}</small>
+      <small>持続時間: ${order.duration}秒 / ${order.note || ""}</small>
     `;
     container.appendChild(card);
+    totalCost += order.cost;
+    totalDuration += order.duration;
   });
 
-  updateTotals();
-}
-
-// 総コスト・総持続時間を計算
-function updateTotals() {
-  const container = document.getElementById("orders");
-  let totalCost = 0, totalDuration = 0;
-  container.querySelectorAll(".card").forEach(card => {
-    const cost = parseInt(card.querySelector("p").textContent.match(/コスト:(\d+)/)[1]);
-    const duration = parseInt(card.querySelector("small").textContent.match(/持続時間: (\d+)/)[1]);
-    totalCost += cost;
-    totalDuration += duration;
-  });
   document.getElementById("totals").textContent = `総コスト: ${totalCost} / 総持続時間: ${totalDuration}秒`;
 }
 
-// ドラッグ＆ドロップ順番変更
+// ドラッグ＆ドロップ
 function enableDrag() {
   const container = document.getElementById("orders");
   let dragged = null;
@@ -162,12 +152,10 @@ function enableDrag() {
       const targetIdx = nodes.indexOf(e.target);
       if(draggedIdx < targetIdx) e.target.after(dragged);
       else e.target.before(dragged);
-      updateTotals();
     }
   });
 }
 
-// リアルタイム検索・フィルター・並び替え
 ["search","filterRarity","minCost","maxCost","minDuration","maxDuration","sortField"].forEach(id=>{
   document.getElementById(id).addEventListener("input", render);
   document.getElementById(id).addEventListener("change", render);
