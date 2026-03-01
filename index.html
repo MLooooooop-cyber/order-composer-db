@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
-<link rel="stylesheet" href="style.css">
 <style>
 body { font-family: sans-serif; }
 #composer-container { display: flex; padding: 20px; }
 #selected-orders, #order-list { width: 380px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: flex-start; }
+.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; display: flex; align-items: flex-start; background-color: #f9f9f9; }
 .order-item.dragging { background-color: #d0f0ff; }
 .order-text { display: flex; flex-direction: column; flex-grow: 1; }
 .order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
@@ -37,7 +36,7 @@ button { margin: 5px 0; padding: 5px 10px; }
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrl = 'orders.csv';  // CSVファイルをGitHubにアップロード
+const csvUrl = 'orders.csv';  // GitHubにアップロードしたCSV
 let originalData = [];
 
 Papa.parse(csvUrl, {
@@ -169,19 +168,21 @@ function formatTime(sec){
   return `${m}分${s}秒`;
 }
 
-// 残り時間更新（残り準備 = 15分 − これまでのprep_time合計）
+// 残り時間更新（残り準備 = 15分 − 選択済みオーダーの prep_time+start_time 合計）
+// 発動 = prep_time − start_time
 function updateRemainingTimes(){
   const items = document.querySelectorAll('#selected-orders .order-item');
-  let remainingPrep = 900; // 15分
+  let totalElapsed = 0;
   items.forEach(div=>{
     const times = div.textContent.match(/(\d+)\+(\d+)秒/);
     if(times){
       const prep = Number(times[1]);
       const start = Number(times[2]);
-      const remainingStart = Math.max(0, remainingPrep - start);
+      const remainingPrep = Math.max(0, 900 - totalElapsed);  // 15分=900秒
+      const remainingStart = Math.max(0, prep - start);
       const label = div.querySelector('.time-label');
       label.innerHTML = `残り準備: ${formatTime(remainingPrep)}<br>発動: ${formatTime(remainingStart)}`;
-      remainingPrep -= prep;
+      totalElapsed += prep + start;
     }
   });
 }
