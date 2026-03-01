@@ -184,14 +184,19 @@ function createOrder(row,isSelected){
   div.className="order";
   div.draggable=isSelected;
   if(row.effect==="待つ") div.classList.add("wait");
+
+  // 左側の時間box
   if(isSelected){
     const time=document.createElement("div");
     time.className="timebox";
     div.appendChild(time);
   }
+
+  // アイコン表示
   const img=document.createElement("img");
-  img.src=row.image_url||"";
+  img.src=row.image_url||""; // CSVのimage_url列
   div.appendChild(img);
+
   const info=document.createElement("div");
   info.className="info";
   const level=row.level?` (${row.level})`:"";
@@ -200,6 +205,7 @@ function createOrder(row,isSelected){
     row.prep_time+"+"+row.start_time+"秒<br>"+
     (row.name1||"")+(row.name2?","+row.name2:"");
   div.appendChild(info);
+
   div.dataset.idx=row.idx;
   if(isSelected) enableDrag(div);
   return div;
