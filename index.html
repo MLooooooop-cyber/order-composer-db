@@ -274,15 +274,18 @@ function resetAll(){
 function copyShareUrl(){
   const items=document.querySelectorAll("#selected .order");
   const params=items.map(div=>{
+    // 待つの場合は w + 秒数 を識別子に
     if(div.classList.contains("wait")){
-      return `w${div.dataset.idx}`;
+      return `w${div.querySelector(".info").innerText.match(/発動:(\d+)秒/)?.[1]||0}`;
     }
     return div.dataset.idx;
   }).join(",");
-  const url=window.location.origin + window.location.pathname + "?orders=" + params;
+
+  const url = window.location.origin + window.location.pathname + "?orders=" + params;
+
   navigator.clipboard.writeText(url)
-    .then(()=>alert("URLをコピーしました！"))
-    .catch(()=>alert("コピーに失敗しました"));
+    .then(()=>alert("共有用URLをコピーしました！"))
+    .catch(()=>alert("共有用URLのコピーに失敗しました"));
 }
 
 // URL復元
