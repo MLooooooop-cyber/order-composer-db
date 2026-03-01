@@ -94,14 +94,17 @@ function createOrder(row,isSelected){
   div.className="order";
   div.draggable=isSelected;
   if(row.effect==="待つ") div.classList.add("wait");
+
   if(isSelected){
     const time=document.createElement("div");
     time.className="timebox";
     div.appendChild(time);
   }
+
   const img=document.createElement("img");
   img.src=row.image_url||"";
   div.appendChild(img);
+
   const info=document.createElement("div");
   info.className="info";
   const level=row.level?` (${row.level})`:"";
@@ -110,6 +113,7 @@ function createOrder(row,isSelected){
     row.prep_time+"+"+row.start_time+"秒<br>"+
     (row.name1||"")+(row.name2?","+row.name2:"");
   div.appendChild(info);
+
   div.dataset.idx=row.idx;
   if(isSelected) enableDrag(div);
   return div;
@@ -141,10 +145,10 @@ function enableDrag(el){
   });
 }
 
-// 時間計算
+// 時間計算（残り準備/発動）
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
-  let base=900; // 15分
+  let remaining=900; // 15分
   let total=0;
 
   items.forEach(div=>{
@@ -156,18 +160,19 @@ function updateTimes(){
     }
 
     let activation;
+
     if(div.classList.contains("wait")){
-        activation = Math.max(0, base - start);
-        div.querySelector(".timebox").innerHTML =
-          format(base)+"<br>"+format(activation);
-        base = activation;
-        total += start;
+      activation = Math.max(0, remaining - start);
+      div.querySelector(".timebox").innerHTML =
+        format(remaining)+" / "+format(activation);
+      remaining = activation;
+      total += start;
     } else {
-        activation = Math.max(0, base - prep);
-        div.querySelector(".timebox").innerHTML =
-          format(base)+"<br>"+format(activation);
-        base = Math.max(0, activation - start);
-        total += prep + start;
+      activation = Math.max(0, remaining - prep);
+      div.querySelector(".timebox").innerHTML =
+        format(remaining)+" / "+format(activation);
+      remaining = Math.max(0, activation - start);
+      total += prep + start;
     }
   });
 
@@ -223,7 +228,6 @@ function loadFromUrl(){
   const orders=params.get("orders");
   if(!orders) return;
   const arr=orders.split(",");
-  const sel=document.getElementById("selected");
   arr.forEach(id=>{
     if(id.startsWith("w")){
       addWait(Number(id.slice(1)));
