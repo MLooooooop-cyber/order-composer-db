@@ -116,7 +116,16 @@ function createOrder(row,isSelected){
   div.appendChild(info);
 
   div.dataset.idx=row.idx;
-  if(isSelected) enableDrag(div);
+
+  if(isSelected){
+    enableDrag(div);
+    // ダブルクリックで削除
+    div.ondblclick=()=>{
+      div.remove();
+      updateTimes();
+    };
+  }
+
   return div;
 }
 
