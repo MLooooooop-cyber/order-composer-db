@@ -241,13 +241,26 @@ function updateTimes(){
     const prep=Number(m[1]);
     const start=Number(m[2]);
 
-    const activation=Math.max(0,base-prep);
+    let activation;
 
-    div.querySelector(".timebox").innerHTML=
-      format(base)+"<br>"+format(activation);
+    if(div.classList.contains("wait")){
+        // 🔵 待つは prep扱い（start無視）
+        activation = Math.max(0, base - start);
+        div.querySelector(".timebox").innerHTML =
+          format(base)+"<br>"+format(activation);
 
-    base=Math.max(0,activation-start);
-    total+=prep+start;
+        base = activation;
+        total += start;
+
+    } else {
+        // 🟢 通常オーダー
+        activation = Math.max(0, base - prep);
+        div.querySelector(".timebox").innerHTML =
+          format(base)+"<br>"+format(activation);
+
+        base = Math.max(0, activation - start);
+        total += prep + start;
+    }
   });
 
   document.getElementById("totalTime").innerText="合計: "+total+"秒";
