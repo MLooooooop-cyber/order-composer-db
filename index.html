@@ -37,7 +37,7 @@ button { margin: 5px 0; padding: 5px 10px; }
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrl = 'orders.csv';
+const csvUrl = 'orders.csv';  // CSVファイルをGitHubにアップロード
 let originalData = [];
 
 Papa.parse(csvUrl, {
@@ -169,7 +169,7 @@ function formatTime(sec){
   return `${m}分${s}秒`;
 }
 
-// 残り時間更新（準備時間 / 発動 = 残り準備 - 発動時間）
+// 残り時間更新（残り準備 = 15分 − これまでのprep_time合計）
 function updateRemainingTimes(){
   const items = document.querySelectorAll('#selected-orders .order-item');
   let remainingPrep = 900; // 15分
@@ -178,11 +178,10 @@ function updateRemainingTimes(){
     if(times){
       const prep = Number(times[1]);
       const start = Number(times[2]);
-      remainingPrep -= prep;
-      let remainingStart = remainingPrep - start;
-      remainingStart = Math.max(0, remainingStart);
+      const remainingStart = Math.max(0, remainingPrep - start);
       const label = div.querySelector('.time-label');
       label.innerHTML = `残り準備: ${formatTime(remainingPrep)}<br>発動: ${formatTime(remainingStart)}`;
+      remainingPrep -= prep;
     }
   });
 }
