@@ -65,8 +65,13 @@ body{
   line-height:1.3;
   word-break:break-all;
 }
+.memo{
+  width:100%;
+  margin-top:2px;
+  font-size:12px;
+}
 .timebox{
-  width:120px;
+  width:140px;
   text-align:right;
   font-weight:bold;
   margin-right:6px;
@@ -83,23 +88,19 @@ button{
   margin-top:6px;
   font-weight:bold;
 }
-.memo{
-  margin-top:2px;
-  width:100%;
-  font-size:12px;
-  padding:2px;
-  box-sizing:border-box;
-}
 </style>
 </head>
 <body>
 
 <div class="wrapper">
+
 <div class="title">Order Composer</div>
+
 <div class="main">
 
 <!-- LEFT -->
 <div class="panel left">
+
 <div class="controls">
   <button onclick="addWait(5)">+5秒</button>
   <button onclick="addWait(10)">+10秒</button>
@@ -108,8 +109,11 @@ button{
   <button onclick="resetAll()">リセット</button>
   <button onclick="copyShareUrl()">共有URLをコピー</button>
 </div>
+
 <div id="selected" class="scroll"></div>
+
 <div class="total" id="totalTime">合計: 0秒</div>
+
 </div>
 
 <!-- RIGHT -->
@@ -156,7 +160,8 @@ function renderList(data){
   list.innerHTML="";
   data.forEach(row=>{
     const el=createOrder(row,false);
-    el.ondblclick=()=>addSelected(row);
+    el.ondblclick=()=>{}; // 右側は削除なし
+    el.onclick=()=>addSelected(row);
     list.appendChild(el);
   });
 }
@@ -187,22 +192,25 @@ function createOrder(row,isSelected){
     (row.name1||"")+(row.name2?("<br>"+row.name2):"");
   div.appendChild(info);
 
+  // メモ欄
   if(isSelected){
-    // メモ欄をname2の下に
     const memo=document.createElement("input");
     memo.type="text";
     memo.placeholder="メモ";
     memo.className="memo";
-    memo.addEventListener("input",updateTimes);
+    memo.oninput=updateTimes;
     div.appendChild(memo);
-
-    enableDrag(div);
-
-    // ダブルクリックで削除
-    div.ondblclick=()=>{ div.remove(); updateTimes(); };
   }
 
   div.dataset.idx=row.idx;
+  if(isSelected){
+    enableDrag(div);
+    // ダブルクリックで削除
+    div.ondblclick=()=>{
+      div.remove();
+      updateTimes();
+    };
+  }
   return div;
 }
 
@@ -232,18 +240,18 @@ function enableDrag(el){
   });
 }
 
-// 時間計算（待つ・メモ対応）
+// 時間計算（待つ対応）
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
   let base=900; // 15分
   let total=0;
 
   items.forEach(div=>{
-    const m=div.querySelector(".info").innerHTML.match(/(\d+)\+(\d+)秒/);
+    const m=div.innerHTML.match(/(\d+)\+(\d+)秒/);
     if(!m) return;
+
     const prep=Number(m[1]);
     const start=Number(m[2]);
-
     let activation;
 
     if(div.classList.contains("wait")){
@@ -289,36 +297,39 @@ function resetAll(){
   document.getElementById("totalTime").innerText="合計: 0秒";
 }
 
-// 共有URLコピー
+// 共有URLコピー（メモも保存）
 function copyShareUrl(){
   const items=document.querySelectorAll("#selected .order");
   const data=[];
   items.forEach(div=>{
-    const idx=div.dataset.idx;
-    const memo = encodeURIComponent(div.querySelector(".memo")?.value || "");
-    if(idx!==undefined) data.push(idx + ":" + memo);
+    const idx = div.dataset.idx;
+    const memo=div.querySelector(".memo")?.value||"";
+    data.push({idx,memo});
   });
-  const url=window.location.origin + window.location.pathname + "?orders=" + data.join(",");
+  const url=window.location.origin + window.location.pathname + "?orders=" + encodeURIComponent(JSON.stringify(data));
   navigator.clipboard.writeText(url)
     .then(()=>alert("URLをコピーしました！"))
     .catch(()=>alert("コピーに失敗しました"));
 }
 
-// URL復元
+// URL復元（メモも復元）
 function loadFromUrl(){
   const params=new URLSearchParams(window.location.search);
   const orders=params.get("orders");
   if(!orders) return;
-  const sel=document.getElementById("selected");
-  orders.split(",").forEach(item=>{
-    const [i,memo]=item.split(":");
-    if(originalData[i]){
-      const el=createOrder(originalData[i],true);
-      if(memo) el.querySelector(".memo").value = decodeURIComponent(memo);
-      sel.appendChild(el);
-    }
-  });
-  updateTimes();
+  try{
+    const data=JSON.parse(decodeURIComponent(orders));
+    const sel=document.getElementById("selected");
+    data.forEach(o=>{
+      const row=originalData[o.idx];
+      if(row){
+        const el=createOrder(row,true);
+        el.querySelector(".memo").value=o.memo||"";
+        sel.appendChild(el);
+      }
+    });
+    updateTimes();
+  }catch(e){}
 }
 </script>
 </body>
