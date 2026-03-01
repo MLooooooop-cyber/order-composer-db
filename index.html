@@ -3,23 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
-<link rel="stylesheet" href="style.css"> <!-- 元サイトCSS使用 -->
+<link rel="stylesheet" href="style.css"> <!-- 元サイトCSS -->
 <style>
-  #composer-container { display: flex; padding: 20px; font-family: sans-serif; }
-  #order-list { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-  .order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
-  .order-item.dragging { background-color: #d0f0ff; }
-  .order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
-  #composer-controls { flex: 1; }
-  button { margin: 5px 0; padding: 5px 10px; }
+body { font-family: sans-serif; }
+#composer-container { display: flex; padding: 20px; }
+#order-list, #selected-orders { width: 350px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
+.order-item { padding: 5px 10px; margin-bottom: 6px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; display: flex; align-items: center; }
+.order-item.dragging { background-color: #d0f0ff; }
+.order-item img { width: 40px; height: 40px; margin-right: 8px; object-fit: contain; }
+button { margin: 5px 0; padding: 5px 10px; }
 </style>
 </head>
 <body>
 
+<h2>オーダーコンポーザー（CSV版）</h2>
 <div id="composer-container">
   <div id="order-list">
     <h3>全部(by時間)</h3>
   </div>
+
+  <div id="selected-orders">
+    <h3>選択オーダー</h3>
+  </div>
+
   <div id="composer-controls">
     <button id="calculate-time">合計時間を計算</button>
     <button id="reset-order">順番リセット</button>
@@ -29,7 +35,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-// CSVファイルURL（GitHubにアップロードしたCSV）
+// CSVファイルURL
 const csvUrl = 'orders.csv';
 let originalData = [];
 
@@ -39,7 +45,7 @@ Papa.parse(csvUrl, {
   header: true,
   complete: function(results) {
     originalData = results.data.filter(row => row.effect);
-    renderList(sortByTime(originalData));
+    renderOrderList(sortByTime(originalData));
   },
   error: function(err){
     console.error('CSV読み込み失敗', err);
@@ -52,8 +58,8 @@ function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
 
-// オーダーリスト描画
-function renderList(data){
+// 左側オーダーリスト描画
+function renderOrderList(data){
   const listDiv = document.getElementById('order-list');
   listDiv.querySelectorAll('.order-item').forEach(el=>el.remove());
 
@@ -72,45 +78,71 @@ function renderList(data){
     text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
     div.appendChild(text);
 
+    // クリックで右側に移動
+    div.addEventListener('dblclick', ()=>moveToSelected(row));
+
     listDiv.appendChild(div);
   });
 
   enableDragAndDrop();
 }
 
+// 選択オーダー（右側）に追加
+function moveToSelected(row){
+  const selDiv = document.getElementById('selected-orders');
+
+  const div = document.createElement('div');
+  div.className = 'order-item';
+  div.draggable = true;
+
+  const img = document.createElement('img');
+  img.src = row.image_url || '';
+  img.alt = row.name1;
+  div.appendChild(img);
+
+  const text = document.createElement('span');
+  text.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
+  div.appendChild(text);
+
+  selDiv.appendChild(div);
+  enableDragAndDrop();
+}
+
 // ドラッグ＆ドロップ
 function enableDragAndDrop(){
-  const list = document.getElementById('order-list');
+  const lists = [document.getElementById('order-list'), document.getElementById('selected-orders')];
   let dragSrc = null;
 
-  list.querySelectorAll('.order-item').forEach(item=>{
-    item.addEventListener('dragstart', e=>{
-      dragSrc = item;
-      item.classList.add('dragging');
-    });
-    item.addEventListener('dragend', e=>{
-      item.classList.remove('dragging');
-    });
-    item.addEventListener('dragover', e=>e.preventDefault());
-    item.addEventListener('drop', e=>{
-      e.preventDefault();
-      if(dragSrc && dragSrc !== item){
-        const nodes = Array.from(list.querySelectorAll('.order-item'));
-        const dragIndex = nodes.indexOf(dragSrc);
-        const dropIndex = nodes.indexOf(item);
-        if(dragIndex < dropIndex){
-          list.insertBefore(dragSrc, item.nextSibling);
-        } else {
-          list.insertBefore(dragSrc, item);
+  lists.forEach(list=>{
+    list.querySelectorAll('.order-item').forEach(item=>{
+      item.addEventListener('dragstart', e=>{
+        dragSrc = item;
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', e=>{
+        item.classList.remove('dragging');
+      });
+      item.addEventListener('dragover', e=>e.preventDefault());
+      item.addEventListener('drop', e=>{
+        e.preventDefault();
+        if(dragSrc && dragSrc !== item){
+          const nodes = Array.from(list.querySelectorAll('.order-item'));
+          const dragIndex = nodes.indexOf(dragSrc);
+          const dropIndex = nodes.indexOf(item);
+          if(dragIndex < dropIndex){
+            list.insertBefore(dragSrc, item.nextSibling);
+          } else {
+            list.insertBefore(dragSrc, item);
+          }
         }
-      }
+      });
     });
   });
 }
 
 // 合計時間計算
 document.getElementById('calculate-time').addEventListener('click', ()=>{
-  const items = document.querySelectorAll('#order-list .order-item');
+  const items = document.querySelectorAll('#selected-orders .order-item');
   let total = 0;
   items.forEach(div=>{
     const times = div.textContent.match(/(\d+)\+(\d+)秒/);
@@ -123,7 +155,9 @@ document.getElementById('calculate-time').addEventListener('click', ()=>{
 
 // 順番リセット
 document.getElementById('reset-order').addEventListener('click', ()=>{
-  renderList(sortByTime(originalData));
+  renderOrderList(sortByTime(originalData));
+  document.getElementById('selected-orders').querySelectorAll('.order-item').forEach(el=>el.remove());
+  document.getElementById('total-time').textContent = '合計時間：0';
 });
 </script>
 </body>
