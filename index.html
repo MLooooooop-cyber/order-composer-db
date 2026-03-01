@@ -54,6 +54,18 @@ body{
 .order.wait{
   background:#e8e8e8;
 }
+.order.disabled{
+  background:#ddd !important;
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.order.highlight{
+  animation:flash 0.6s ease;
+}
+@keyframes flash{
+  0%{background:#ffe082;}
+  100%{background:#fafafa;}
+}
 .order img{
   width:36px;
   height:36px;
@@ -101,7 +113,6 @@ button{
 
 <!-- LEFT -->
 <div class="panel left">
-
 <div class="controls">
   <button onclick="addWait(5)">+5秒</button>
   <button onclick="addWait(10)">+10秒</button>
@@ -113,7 +124,6 @@ button{
 
 <div id="selected" class="scroll"></div>
 <div class="total" id="totalTime">合計: 0秒</div>
-
 </div>
 
 <!-- RIGHT -->
@@ -164,10 +174,22 @@ function sortData(data){
 
 function renderList(data){
   const list=document.getElementById("list");
+  const selectedIdxs = Array.from(
+    document.querySelectorAll("#selected .order")
+  ).map(div => div.dataset.idx);
+
   list.innerHTML="";
+
   data.forEach(row=>{
     const el=createOrder(row,false);
-    el.onclick=()=>addSelected(row);
+
+    if(selectedIdxs.includes(String(row.idx))){
+      el.classList.add("disabled");
+      el.onclick = () => highlightSelected(row.idx);
+    }else{
+      el.onclick = () => addSelected(row);
+    }
+
     list.appendChild(el);
   });
 }
@@ -220,6 +242,7 @@ function createOrder(row,isSelected){
     div.ondblclick=()=>{
       div.remove();
       updateTimes();
+      renderList(sortData(originalData));
     };
   }
 
@@ -227,23 +250,33 @@ function createOrder(row,isSelected){
 }
 
 function addSelected(row){
-
   const sel=document.getElementById("selected");
 
-  // すでに選択済みかチェック（待つは除外）
-  if(row.effect !== "待つ"){
-    const exists = Array.from(sel.querySelectorAll(".order"))
-      .some(div => div.dataset.idx === String(row.idx));
+  const exists = Array.from(sel.querySelectorAll(".order"))
+    .some(div => div.dataset.idx === String(row.idx));
 
-    if(exists){
-      alert("このオーダーは既に選択されています");
-      return;
-    }
+  if(exists){
+    highlightSelected(row.idx);
+    return;
   }
 
   const el=createOrder(row,true);
   sel.appendChild(el);
   updateTimes();
+  renderList(sortData(originalData));
+}
+
+function highlightSelected(idx){
+  const target = Array.from(
+    document.querySelectorAll("#selected .order")
+  ).find(div => div.dataset.idx === String(idx));
+
+  if(target){
+    target.classList.add("highlight");
+    setTimeout(()=>{
+      target.classList.remove("highlight");
+    },600);
+  }
 }
 
 function enableDrag(el){
@@ -314,6 +347,7 @@ function addCustomWait(){
 function resetAll(){
   document.getElementById("selected").innerHTML="";
   document.getElementById("totalTime").innerText="合計: 0秒";
+  renderList(sortData(originalData));
 }
 
 function copyShareUrl(){
@@ -322,7 +356,6 @@ function copyShareUrl(){
 
   items.forEach(div=>{
     const memo=div.querySelector(".memo")?.value||"";
-
     data.push({
       idx:div.dataset.idx,
       effect:div.dataset.effect,
@@ -370,6 +403,7 @@ function loadFromUrl(){
     });
 
     updateTimes();
+    renderList(sortData(originalData));
   }catch(e){
     console.error(e);
   }
