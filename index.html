@@ -3,31 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <title>オーダーコンポーザー（CSV版）</title>
+<link rel="stylesheet" href="style.css"> <!-- 元サイトのCSSを使用 -->
 <style>
-  body { font-family: sans-serif; padding: 20px; display: flex; }
-  #order-list { width: 300px; border: 1px solid #aaa; padding: 10px; margin-right: 20px; }
-  .order-item { padding: 5px 10px; margin-bottom: 4px; border: 1px solid #ccc; cursor: grab; background-color: #f9f9f9; }
-  .order-item.dragging { background-color: #d0f0ff; }
-  #details { flex: 1; }
-  button { margin: 5px 0; padding: 5px 10px; }
+/* 画像非表示 */
+.order-image { display: none; }
+/* 必要に応じて調整可能 */
 </style>
 </head>
 <body>
 
-<div id="order-list">
-  <h3>全部(by時間)</h3>
-  <!-- オーダーリストがここに表示されます -->
-</div>
-
-<div id="details">
-  <button id="calculate-time">合計時間を計算</button>
-  <button id="reset-order">順番リセット</button>
-  <p id="total-time">合計時間：0</p>
+<div id="composer-container">
+  <div id="order-list">
+    <h3>全部(by時間)</h3>
+    <!-- オーダーリストがここに描画されます -->
+  </div>
+  <div id="composer-controls">
+    <button id="calculate-time">合計時間を計算</button>
+    <button id="reset-order">順番リセット</button>
+    <p id="total-time">合計時間：0</p>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrl = 'orders.csv'; // CSVファイル名
+// CSVファイルURL（GitHubにアップロードしたCSV）
+const csvUrl = 'orders.csv';
 let originalData = [];
 
 // CSV読み込み
@@ -38,21 +38,22 @@ Papa.parse(csvUrl, {
     originalData = results.data.filter(row => row.effect);
     renderList(sortByTime(originalData));
   },
-  error: function(err) {
+  error: function(err){
     console.error('CSV読み込み失敗', err);
-    alert('データ読み込みに失敗しました。CSVのURLや形式を確認してください。');
+    alert('データ読み込みに失敗しました。CSVの形式を確認してください。');
   }
 });
 
-// 時間順ソート（準備時間 + 発動時間）
+// 準備時間+発動時間でソート
 function sortByTime(data) {
   return [...data].sort((a,b)=> (Number(a.prep_time)+Number(a.start_time)) - (Number(b.prep_time)+Number(b.start_time)));
 }
 
 // オーダーリスト描画
-function renderList(data) {
+function renderList(data){
   const listDiv = document.getElementById('order-list');
-  listDiv.querySelectorAll('.order-item').forEach(el => el.remove());
+  listDiv.querySelectorAll('.order-item').forEach(el=>el.remove());
+
   data.forEach((row,index)=>{
     const div = document.createElement('div');
     div.className = 'order-item';
@@ -61,24 +62,25 @@ function renderList(data) {
     div.textContent = `${row.effect} (${row.level}) - ${row.prep_time}+${row.start_time}秒 - ${row.name1}${row.name2?','+row.name2:''}`;
     listDiv.appendChild(div);
   });
+
   enableDragAndDrop();
 }
 
-// ドラッグ＆ドロップ
-function enableDragAndDrop() {
+// ドラッグ＆ドロップ機能
+function enableDragAndDrop(){
   const list = document.getElementById('order-list');
   let dragSrc = null;
 
-  list.querySelectorAll('.order-item').forEach(item => {
-    item.addEventListener('dragstart', e => {
+  list.querySelectorAll('.order-item').forEach(item=>{
+    item.addEventListener('dragstart', e=>{
       dragSrc = item;
       item.classList.add('dragging');
     });
-    item.addEventListener('dragend', e => {
+    item.addEventListener('dragend', e=>{
       item.classList.remove('dragging');
     });
-    item.addEventListener('dragover', e => e.preventDefault());
-    item.addEventListener('drop', e => {
+    item.addEventListener('dragover', e=>e.preventDefault());
+    item.addEventListener('drop', e=>{
       e.preventDefault();
       if(dragSrc && dragSrc !== item){
         const nodes = Array.from(list.querySelectorAll('.order-item'));
@@ -112,6 +114,5 @@ document.getElementById('reset-order').addEventListener('click', ()=>{
   renderList(sortByTime(originalData));
 });
 </script>
-
 </body>
 </html>
