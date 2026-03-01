@@ -28,27 +28,34 @@ body {
 <div id="orders">読み込み中...</div>
 
 <script>
-const sheetURL = https://docs.google.com/spreadsheets/d/1Zh3fGU8s9isn3r2IgcCDulnIFpLqTjgmsliNEF2OKFE/gviz/tq?tqx=out:csv;
+// 修正版：Google Visualization API 経由の CSV URL
+const sheetURL = "https://docs.google.com/spreadsheets/d/1Zh3fGU8s9isn3r2IgcCDulnIFpLqTjgmsliNEF2OKFE/gviz/tq?tqx=out:csv";
 
 async function loadData() {
-  const response = await fetch(sheetURL);
-  const csv = await response.text();
+  try {
+    const response = await fetch(sheetURL);
+    const csv = await response.text();
 
-  const rows = csv.trim().split("\n").slice(1);
-  const data = rows.map(row => {
-    const cols = row.split(",");
-    return {
-      id: cols[0],
-      name: cols[1],
-      rarity: cols[2],
-      cost: cols[3],
-      effect: cols[4],
-      duration: cols[5],
-      note: cols[6],
-    };
-  });
+    // 行に分割して先頭行（列名）はスキップ
+    const rows = csv.trim().split("\n").slice(1);
+    const data = rows.map(row => {
+      const cols = row.split(",");
+      return {
+        id: cols[0],
+        name: cols[1],
+        rarity: cols[2],
+        cost: cols[3],
+        effect: cols[4],
+        duration: cols[5],
+        note: cols[6],
+      };
+    });
 
-  render(data);
+    render(data);
+  } catch (error) {
+    document.getElementById("orders").innerHTML = "データ読み込みに失敗しました";
+    console.error(error);
+  }
 }
 
 function render(data) {
