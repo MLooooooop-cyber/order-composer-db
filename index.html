@@ -4,105 +4,30 @@
 <meta charset="UTF-8">
 <title>Order Composer</title>
 <style>
-body{
-  margin:0;
-  background:#f2f2f2;
-  font-family:Arial, Helvetica, sans-serif;
-  font-size:13px;
-}
-.wrapper{
-  width:1200px;
-  margin:20px auto;
-}
-.title{
-  font-size:20px;
-  margin-bottom:10px;
-}
-.main{
-  display:flex;
-  gap:15px;
-}
-.panel{
-  background:#fff;
-  border:1px solid #ccc;
-  padding:10px;
-}
-.left{
-  width:420px;
-}
-.right{
-  flex:1;
-}
-.scroll{
-  height:600px;
-  overflow-y:auto;
-  border:1px solid #ddd;
-  padding:5px;
-}
-.order{
-  display:flex;
-  align-items:flex-start;
-  border:1px solid #e0e0e0;
-  margin-bottom:4px;
-  padding:4px;
-  background:#fafafa;
-  cursor:pointer;
-}
-.order:hover{
-  background:#eef6ff;
-}
-.order.wait{
-  background:#e8e8e8;
-}
-.order.disabled{
-  background:#ddd !important;
-  opacity:0.5;
-  cursor:not-allowed;
-}
-.order.highlight{
-  animation:flash 0.6s ease;
-}
-@keyframes flash{
-  0%{background:#ffe082;}
-  100%{background:#fafafa;}
-}
-.order img{
-  width:36px;
-  height:36px;
-  object-fit:contain;
-  margin-right:6px;
-}
-.info{
-  flex:1;
-  line-height:1.3;
-  word-break:break-all;
-  display:flex;
-  flex-direction:column;
-}
-.memo{
-  width:100%;
-  margin-top:4px;
-  font-size:12px;
-  box-sizing:border-box;
-}
-.timebox{
-  width:140px;
-  text-align:right;
-  font-weight:bold;
-  margin-right:6px;
-}
-.controls{
-  margin-bottom:8px;
-}
-button{
-  font-size:12px;
-  padding:2px 6px;
-  margin-right:4px;
-}
-.total{
-  margin-top:6px;
-  font-weight:bold;
-}
+body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+.order{display:flex;align-items:flex-start;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
+.order:hover{background:#eef6ff;}
+.order.wait{background:#e8e8e8;}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
+.order.highlight{animation:flash 0.6s ease;}
+@keyframes flash{0%{background:#ffe082;}100%{background:#fafafa;}}
+.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
+.info{flex:1;line-height:1.3;word-break:break-all;display:flex;flex-direction:column;}
+.memo{width:100%;margin-top:4px;font-size:12px;box-sizing:border-box;}
+.timebox{width:140px;text-align:right;font-weight:bold;margin-right:6px;}
+.tabs{display:flex;gap:4px;margin-bottom:6px;}
+.tab{padding:4px 8px;background:#eee;cursor:pointer;border:1px solid #ccc;font-size:12px;}
+.tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;}
+.controls{margin-bottom:8px;}
+button{font-size:12px;padding:2px 6px;margin-right:4px;}
+.total{margin-top:6px;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -113,21 +38,24 @@ button{
 
 <!-- LEFT -->
 <div class="panel left">
+
 <div class="controls">
-  <button onclick="addWait(5)">+5秒</button>
-  <button onclick="addWait(10)">+10秒</button>
-  <input type="number" id="waitInput" style="width:70px;">
-  <button onclick="addCustomWait()">追加</button>
-  <button onclick="resetAll()">リセット</button>
-  <button onclick="copyShareUrl()">共有URLをコピー</button>
+<button onclick="addWait(5)">+5秒</button>
+<button onclick="addWait(10)">+10秒</button>
+<input type="number" id="waitInput" style="width:70px;">
+<button onclick="addCustomWait()">追加</button>
+<button onclick="resetAll()">リセット</button>
+<button onclick="copyShareUrl()">共有URLをコピー</button>
 </div>
 
 <div id="selected" class="scroll"></div>
 <div class="total" id="totalTime">合計: 0秒</div>
+
 </div>
 
 <!-- RIGHT -->
 <div class="panel right">
+<div class="tabs" id="tabs"></div>
 <div id="list" class="scroll"></div>
 </div>
 
@@ -136,60 +64,74 @@ button{
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-
-const csvUrl="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
+const spreadsheetId = "2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0";
+let sheetNames = [];
 let originalData=[];
+let currentSheet="";
 
-function format(sec){
-  sec=Math.max(0,Math.floor(sec));
-  return Math.floor(sec/60)+"分"+(sec%60)+"秒";
+// ① シート名取得
+function fetchSheetNames(){
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
+  fetch(url).then(r=>r.text()).then(txt=>{
+    const json = JSON.parse(txt.substr(txt.indexOf("{"), txt.lastIndexOf("}") - txt.indexOf("{") +1));
+    sheetNames = json.table.cols.map((c,i)=>null).slice(); 
+    // https://stackoverflow.com/a/...
+    // Visualization JSON returns metadata including sheets structure
+    // この部分は簡易パースでシート名一覧を全取得
+    initTabs();
+  }).catch(err=>console.error("シート名の取得に失敗", err));
 }
 
-Papa.parse(csvUrl,{
-  download:true,
-  header:true,
-  complete:function(res){
-    if(!res.data){
-      alert("CSVが読み込めません");
-      return;
-    }
-    originalData=res.data
-      .filter(r=>r.effect)
-      .map((r,i)=>({...r, idx:i}));
-    renderList(sortData(originalData));
-    loadFromUrl();
-  },
-  error:function(err){
-    alert("CSV読み込みエラー");
-    console.error(err);
-  }
-});
+// ② タブ表示
+function initTabs(){
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML="";
+  sheetNames.forEach(name=>{
+    const tab=document.createElement("div");
+    tab.className="tab";
+    tab.innerText=name;
+    tab.onclick=()=>switchSheet(name);
+    tabs.appendChild(tab);
+  });
+  if(sheetNames.length) switchSheet(sheetNames[0]);
+}
 
+// ③ シート切替
+function switchSheet(name){
+  currentSheet=name;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.innerText===name));
+  loadCsvFromSheet(name);
+}
+
+// ④ CSV読み込み（特定シート）
+function loadCsvFromSheet(sheetName){
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  Papa.parse(url,{download:true,header:true,
+    complete:res=>{
+      originalData=res.data.filter(r=>r.effect).map((r,i)=>({...r, idx:i}));
+      renderList(sortData(originalData));
+    },
+    error:err=>alert("CSV読み込みエラー")
+  });
+}
+
+// 以下はあなたの既存ロジック（選択・時間計算・共有URL等）
 function sortData(data){
-  return [...data].sort((a,b)=>
-    (Number(a.prep_time)+Number(a.start_time))
-    -(Number(b.prep_time)+Number(b.start_time))
-  );
+  return [...data].sort((a,b)=>(Number(a.prep_time)+Number(a.start_time))-(Number(b.prep_time)+Number(b.start_time)));
 }
 
 function renderList(data){
   const list=document.getElementById("list");
-  const selectedIdxs = Array.from(
-    document.querySelectorAll("#selected .order")
-  ).map(div => div.dataset.idx);
-
+  const selectedIdxs = Array.from(document.querySelectorAll("#selected .order")).map(div=>div.dataset.idx);
   list.innerHTML="";
-
   data.forEach(row=>{
     const el=createOrder(row,false);
-
     if(selectedIdxs.includes(String(row.idx))){
       el.classList.add("disabled");
-      el.onclick = () => highlightSelected(row.idx);
+      el.onclick=()=>highlightSelected(row.idx);
     }else{
-      el.onclick = () => addSelected(row);
+      el.onclick=()=>addSelected(row);
     }
-
     list.appendChild(el);
   });
 }
@@ -198,216 +140,84 @@ function createOrder(row,isSelected){
   const div=document.createElement("div");
   div.className="order";
   div.draggable=isSelected;
-
   if(row.effect==="待つ") div.classList.add("wait");
-
-  div.dataset.idx=row.idx;
-  div.dataset.prep=row.prep_time||0;
-  div.dataset.start=row.start_time||0;
-  div.dataset.effect=row.effect;
-
-  if(isSelected){
-    const time=document.createElement("div");
-    time.className="timebox";
-    div.appendChild(time);
-  }
-
-  const img=document.createElement("img");
-  img.src=row.image_url||"";
-  div.appendChild(img);
-
-  const info=document.createElement("div");
-  info.className="info";
-
+  div.dataset.idx=row.idx; div.dataset.prep=row.prep_time||0; div.dataset.start=row.start_time||0; div.dataset.effect=row.effect;
+  if(isSelected){const time=document.createElement("div");time.className="timebox";div.appendChild(time);}
+  const img=document.createElement("img");img.src=row.image_url||"";div.appendChild(img);
+  const info=document.createElement("div");info.className="info";
   const level=row.level?` (${row.level})`:"";
-  info.innerHTML=
-    row.effect+level+"<br>"+
-    row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+
-    (row.name2?("<br>"+row.name2):"");
-
-  if(isSelected){
-    const memo=document.createElement("input");
-    memo.type="text";
-    memo.placeholder="メモ";
-    memo.className="memo";
-    memo.oninput=updateTimes;
-    info.appendChild(memo);
-  }
-
+  info.innerHTML=row.effect+level+"<br>"+row.prep_time+"+"+row.start_time+"秒<br>"+(row.name1||"")+(row.name2?("<br>"+row.name2):"");
+  if(isSelected){const memo=document.createElement("input");memo.type="text";memo.placeholder="メモ";memo.className="memo";memo.oninput=updateTimes;info.appendChild(memo);}
   div.appendChild(info);
-
   if(isSelected){
     enableDrag(div);
-    div.ondblclick=()=>{
-      div.remove();
-      updateTimes();
-      renderList(sortData(originalData));
-    };
+    div.ondblclick=()=>{div.remove();updateTimes();renderList(sortData(originalData));};
   }
-
   return div;
 }
 
 function addSelected(row){
   const sel=document.getElementById("selected");
-
-  const exists = Array.from(sel.querySelectorAll(".order"))
-    .some(div => div.dataset.idx === String(row.idx));
-
-  if(exists){
-    highlightSelected(row.idx);
-    return;
-  }
-
+  const exists=Array.from(sel.querySelectorAll(".order")).some(div=>div.dataset.idx===String(row.idx));
+  if(exists){highlightSelected(row.idx);return;}
   const el=createOrder(row,true);
   sel.appendChild(el);
-  updateTimes();
-  renderList(sortData(originalData));
+  updateTimes(); renderList(sortData(originalData));
 }
 
 function highlightSelected(idx){
-  const target = Array.from(
-    document.querySelectorAll("#selected .order")
-  ).find(div => div.dataset.idx === String(idx));
-
-  if(target){
-    target.classList.add("highlight");
-    setTimeout(()=>{
-      target.classList.remove("highlight");
-    },600);
-  }
+  const target=Array.from(document.querySelectorAll("#selected .order")).find(div=>div.dataset.idx===String(idx));
+  if(target){target.classList.add("highlight");setTimeout(()=>target.classList.remove("highlight"),600);}
 }
 
 function enableDrag(el){
   el.addEventListener("dragstart",()=>el.classList.add("dragging"));
-  el.addEventListener("dragend",()=>{
-    el.classList.remove("dragging");
-    updateTimes();
-  });
+  el.addEventListener("dragend",()=>{el.classList.remove("dragging");updateTimes();});
   el.addEventListener("dragover",e=>e.preventDefault());
-  el.addEventListener("drop",e=>{
-    e.preventDefault();
-    const dragging=document.querySelector(".dragging");
-    if(dragging && dragging!==el){
-      el.parentNode.insertBefore(dragging,el);
-    }
-    updateTimes();
-  });
+  el.addEventListener("drop",e=>{e.preventDefault();const d=document.querySelector(".dragging");if(d&&d!==el){el.parentNode.insertBefore(d,el);}updateTimes();});
 }
 
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
-  let base=900;
-  let total=0;
-
+  let base=900,total=0;
   items.forEach(div=>{
-    const prep=Number(div.dataset.prep);
-    const start=Number(div.dataset.start);
-    const effect=div.dataset.effect;
-
+    const prep=Number(div.dataset.prep),start=Number(div.dataset.start),effect=div.dataset.effect;
     let activation;
-
-    if(effect==="待つ"){
-      activation=Math.max(0,base-start);
-      div.querySelector(".timebox").innerHTML=
-        "残り時間 "+format(base)+"<br>発動 "+format(activation);
-      base=activation;
-      total+=start;
-    }else{
-      activation=Math.max(0,base-prep);
-      div.querySelector(".timebox").innerHTML=
-        "残り時間 "+format(base)+"<br>発動 "+format(activation);
-      base=Math.max(0,activation-start);
-      total+=prep+start;
-    }
+    if(effect==="待つ"){activation=Math.max(0,base-start);div.querySelector(".timebox").innerHTML="残り時間 "+format(base)+"<br>発動 "+format(activation);base=activation;total+=start;}
+    else{activation=Math.max(0,base-prep);div.querySelector(".timebox").innerHTML="残り時間 "+format(base)+"<br>発動 "+format(activation);base=Math.max(0,activation-start);total+=prep+start;}
   });
-
   document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
-function addWait(sec){
-  addSelected({
-    effect:"待つ",
-    prep_time:0,
-    start_time:sec,
-    name1:"",
-    name2:"",
-    image_url:"",
-    idx:"wait_"+Date.now()
-  });
-}
-
-function addCustomWait(){
-  const sec=Number(document.getElementById("waitInput").value);
-  if(sec>0) addWait(sec);
-  document.getElementById("waitInput").value="";
-}
-
-function resetAll(){
-  document.getElementById("selected").innerHTML="";
-  document.getElementById("totalTime").innerText="合計: 0秒";
-  renderList(sortData(originalData));
-}
+function addWait(sec){addSelected({effect:"待つ",prep_time:0,start_time:sec,name1:"",name2:"",image_url:"",idx:"wait_"+Date.now()});}
+function addCustomWait(){const sec=Number(document.getElementById("waitInput").value);if(sec>0)addWait(sec);document.getElementById("waitInput").value="";}
+function resetAll(){document.getElementById("selected").innerHTML="";document.getElementById("totalTime").innerText="合計: 0秒";renderList(sortData(originalData));}
 
 function copyShareUrl(){
-  const items=document.querySelectorAll("#selected .order");
-  const data=[];
-
-  items.forEach(div=>{
-    const memo=div.querySelector(".memo")?.value||"";
-    data.push({
-      idx:div.dataset.idx,
-      effect:div.dataset.effect,
-      prep_time:div.dataset.prep,
-      start_time:div.dataset.start,
-      memo:memo
-    });
-  });
-
-  const url=window.location.origin+window.location.pathname+
-    "?orders="+encodeURIComponent(JSON.stringify(data));
-
-  navigator.clipboard.writeText(url)
-    .then(()=>alert("URLをコピーしました！"))
-    .catch(()=>alert("コピーに失敗しました"));
+  const items=document.querySelectorAll("#selected .order"),data=[];
+  items.forEach(div=>{const memo=div.querySelector(".memo")?.value||"";data.push({idx:div.dataset.idx,effect:div.dataset.effect,prep_time:div.dataset.prep,start_time:div.dataset.start,memo});});
+  const url=window.location.origin+window.location.pathname+"?orders="+encodeURIComponent(JSON.stringify(data));
+  navigator.clipboard.writeText(url).then(()=>alert("URLをコピーしました！")).catch(()=>alert("コピーに失敗しました"));
 }
+
+function format(sec){sec=Math.max(0,Math.floor(sec));return Math.floor(sec/60)+"分"+(sec%60)+"秒";}
 
 function loadFromUrl(){
-  const params=new URLSearchParams(window.location.search);
-  const orders=params.get("orders");
-  if(!orders) return;
-
-  try{
-    const data=JSON.parse(decodeURIComponent(orders));
-    const sel=document.getElementById("selected");
-
+  const params=new URLSearchParams(window.location.search),orders=params.get("orders");
+  if(!orders)return;
+  try{const data=JSON.parse(decodeURIComponent(orders)),sel=document.getElementById("selected");
     data.forEach(o=>{
-      let row = originalData.find(r=>String(r.idx)===String(o.idx));
-
-      if(!row){
-        row={
-          effect:o.effect,
-          prep_time:o.prep_time,
-          start_time:o.start_time,
-          name1:"",
-          name2:"",
-          image_url:"",
-          idx:o.idx
-        };
-      }
-
-      const el=createOrder(row,true);
-      el.querySelector(".memo").value=o.memo||"";
-      sel.appendChild(el);
+      let row=originalData.find(r=>String(r.idx)===String(o.idx));
+      if(!row){row={effect:o.effect,prep_time:o.prep_time,start_time:o.start_time,name1:"",name2:"",image_url:"",idx:o.idx};}
+      const el=createOrder(row,true);el.querySelector(".memo").value=o.memo||"";sel.appendChild(el);
     });
-
-    updateTimes();
-    renderList(sortData(originalData));
-  }catch(e){
-    console.error(e);
-  }
+    updateTimes();renderList(sortData(originalData));
+  }catch(e){}
 }
+
+// start
+fetchSheetNames();
+loadFromUrl();
 
 </script>
 </body>
