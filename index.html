@@ -41,6 +41,7 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <div class="title">Order Composer</div>
 <div class="main">
 
+<!-- 左側 -->
 <div class="panel left">
 
 <div class="controls">
@@ -49,7 +50,6 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <input type="number" id="waitInput" style="width:70px;">
 <button onclick="addCustomWait()">追加</button>
 <button onclick="resetAll()">リセット</button>
-<button onclick="copyShareUrl()">共有URLをコピー</button>
 </div>
 
 <div id="selected" class="scroll"></div>
@@ -57,6 +57,7 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 
 </div>
 
+<!-- 右側 -->
 <div class="panel right">
 <div class="tabs" id="tabs"></div>
 <div id="list" class="scroll"></div>
@@ -68,53 +69,44 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 
-const spreadsheetId = "1Zh3fGU8s9isn3r2IgcCDulnIFpLqTjgmsliNEF2OKFE";
+// ★★★★★ スプレッドシート設定 ★★★★★
+const sheetTabs = {
 
-let sheetNames=[];
+  "メイン": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
+
+  "イベント": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv"
+
+};
+// ★★★★★ ここまで ★★★★★
+
 let originalData=[];
-let currentSheet="";
-
-// 🔹 シート一覧取得（正しい方法）
-async function fetchSheetNames(){
-  const url=`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json`;
-
-  const res=await fetch(url);
-  const text=await res.text();
-
-  const json=JSON.parse(text.substring(47).slice(0,-2));
-
-  sheetNames=json.table.cols.map(c=>c.label).filter(n=>n);
-
-  initTabs();
-}
+let currentTab=null;
 
 function initTabs(){
   const tabs=document.getElementById("tabs");
   tabs.innerHTML="";
 
-  sheetNames.forEach(name=>{
+  Object.keys(sheetTabs).forEach(name=>{
     const tab=document.createElement("div");
     tab.className="tab";
     tab.innerText=name;
-    tab.onclick=()=>switchSheet(name);
+    tab.onclick=()=>switchTab(name);
     tabs.appendChild(tab);
   });
 
-  if(sheetNames.length) switchSheet(sheetNames[0]);
+  switchTab(Object.keys(sheetTabs)[0]);
 }
 
-function switchSheet(name){
-  currentSheet=name;
+function switchTab(name){
+  currentTab=name;
 
   document.querySelectorAll(".tab")
     .forEach(t=>t.classList.toggle("active",t.innerText===name));
 
-  loadSheetCsv(name);
+  loadCsv(sheetTabs[name]);
 }
 
-function loadSheetCsv(sheetName){
-  const url=`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-
+function loadCsv(url){
   Papa.parse(url,{
     download:true,
     header:true,
@@ -124,6 +116,9 @@ function loadSheetCsv(sheetName){
         .map((r,i)=>({...r,idx:i}));
 
       renderList(sortData(originalData));
+    },
+    error:function(){
+      alert("CSV読み込みエラー");
     }
   });
 }
@@ -243,25 +238,17 @@ function updateTimes(){
     const start=Number(div.dataset.start);
     const effect=div.dataset.effect;
 
-    let activation;
-
     if(effect==="待つ"){
-      activation=Math.max(0,base-start);
-      div.querySelector(".timebox").innerHTML=
-        "残り時間 "+format(base)+"<br>発動 "+format(activation);
-      base=activation;
+      base=Math.max(0,base-start);
       total+=start;
     }else{
-      activation=Math.max(0,base-prep);
-      div.querySelector(".timebox").innerHTML=
-        "残り時間 "+format(base)+"<br>発動 "+format(activation);
+      const activation=Math.max(0,base-prep);
       base=Math.max(0,activation-start);
       total+=prep+start;
     }
   });
 
-  document.getElementById("totalTime").innerText=
-    "合計: "+total+"秒";
+  document.getElementById("totalTime").innerText="合計: "+total+"秒";
 }
 
 function addWait(sec){
@@ -288,35 +275,7 @@ function resetAll(){
   renderList(sortData(originalData));
 }
 
-function copyShareUrl(){
-  const items=document.querySelectorAll("#selected .order");
-  const data=[];
-
-  items.forEach(div=>{
-    const memo=div.querySelector(".memo")?.value||"";
-    data.push({
-      idx:div.dataset.idx,
-      effect:div.dataset.effect,
-      prep_time:div.dataset.prep,
-      start_time:div.dataset.start,
-      memo
-    });
-  });
-
-  const url=location.origin+location.pathname+
-    "?orders="+encodeURIComponent(JSON.stringify(data));
-
-  navigator.clipboard.writeText(url)
-    .then(()=>alert("URLをコピーしました"))
-    .catch(()=>alert("コピー失敗"));
-}
-
-function format(sec){
-  sec=Math.max(0,Math.floor(sec));
-  return Math.floor(sec/60)+"分"+(sec%60)+"秒";
-}
-
-fetchSheetNames();
+initTabs();
 
 </script>
 </body>
