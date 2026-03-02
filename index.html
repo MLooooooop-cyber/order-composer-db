@@ -122,9 +122,16 @@ function loadCsv(url){
     download:true,
     header:true,
     complete:function(res){
+
       originalData=res.data
-        .filter(r=>r.effect)
-        .map((r,i)=>({...r,idx:i}));
+        .filter(r=>r.effect || r["effect"])
+        .map((r,i)=>({
+          ...r,
+          prep_time: r.prep_time || r["準備時間"] || 0,
+          start_time: r.start_time || r["発動時間"] || 0,
+          effect: r.effect || r["効果"] || "",
+          idx:i
+        }));
 
       renderList(sortData(originalData));
     },
