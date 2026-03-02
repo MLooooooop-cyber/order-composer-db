@@ -5,163 +5,111 @@
 <title>Order Composer</title>
 
 <style>
-body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
-.wrapper{width:1200px;margin:20px auto;}
-.title{font-size:20px;margin-bottom:10px;}
-.main{display:flex;gap:15px;}
-.panel{background:#fff;border:1px solid #ccc;padding:10px;}
-.left{width:420px;}
-.right{flex:1;}
-.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#111;
+  color:#fff;
+}
 
-.order{display:flex;align-items:flex-start;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
-.order:hover{background:#eef6ff;}
-.order.wait{background:#e8e8e8;}
-.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
-.order.highlight{animation:flash 0.6s ease;}
-@keyframes flash{0%{background:#ffe082;}100%{background:#fafafa;}}
+.container{
+  display:flex;
+  height:100vh;
+}
 
-.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
-.info{flex:1;line-height:1.3;word-break:break-all;display:flex;flex-direction:column;}
-.memo{width:100%;margin-top:4px;font-size:12px;box-sizing:border-box;}
-.timebox{width:140px;text-align:right;font-weight:bold;margin-right:6px;}
+.panel{
+  flex:1;
+  padding:10px;
+  overflow-y:auto;
+  border-right:1px solid #333;
+}
 
-.tabs{display:flex;gap:4px;margin-bottom:6px;}
-.tab{padding:4px 8px;background:#eee;cursor:pointer;border:1px solid #ccc;font-size:12px;}
-.tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;}
+.panel:last-child{
+  border-right:none;
+}
 
-.controls{margin-bottom:8px;}
-button{font-size:12px;padding:2px 6px;margin-right:4px;}
-.total{margin-top:6px;font-weight:bold;line-height:1.5;}
+.order{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:6px;
+  margin-bottom:6px;
+  background:#222;
+  border-radius:6px;
+  cursor:pointer;
+  position:relative;
+}
+
+.order img{
+  width:48px;
+  height:48px;
+  object-fit:cover;
+  border-radius:4px;
+}
+
+.info{
+  font-size:12px;
+  line-height:1.4;
+}
+
+.wait{
+  background:#333;
+}
+
+.memo{
+  margin-top:4px;
+  width:100%;
+}
+
+.timebox{
+  position:absolute;
+  right:6px;
+  top:6px;
+  font-size:11px;
+  text-align:right;
+  color:#0f0;
+}
+
+#totalTime{
+  padding:10px;
+  background:#000;
+  font-size:14px;
+  border-top:1px solid #333;
+}
 </style>
 </head>
+
 <body>
 
-<div class="wrapper">
-<div class="title">Order Composer</div>
-<div class="main">
+<div class="container">
+  <div class="panel">
+    <h3>一覧</h3>
+    <div id="list"></div>
+  </div>
 
-<!-- 左側 -->
-<div class="panel left">
-
-<div class="controls">
-<button onclick="addWait(5)">+5秒</button>
-<button onclick="addWait(10)">+10秒</button>
-<input type="number" id="waitInput" style="width:70px;">
-<button onclick="addCustomWait()">追加</button>
-<button onclick="resetAll()">リセット</button>
+  <div class="panel">
+    <h3>選択オーダー</h3>
+    <div id="selected"></div>
+    <div id="totalTime"></div>
+  </div>
 </div>
 
-<div id="selected" class="scroll"></div>
-<div class="total" id="totalTime">
-残り時間 15分0秒<br>
-発動 0分0秒<br><br>
-合計: 0秒
-</div>
-
-</div>
-
-<!-- 右側 -->
-<div class="panel right">
-<div class="tabs" id="tabs"></div>
-<div id="list" class="scroll"></div>
-</div>
-
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 
-const sheetTabs = {
-  "マッチ全部":
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
-  "マッチ抜粋":
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
-  "対ヒュージ全部":
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
-  "対ヒュージ抜粋":
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
-};
+let originalData = [];
 
-let originalData=[];
-let currentTab=null;
+// ダミーデータ（本番ではCSV読み込み部分に置き換え）
+originalData = [
+  {idx:1,effect:"攻撃",prep_time:10,start_time:5,name1:"スキルA",image_url:""},
+  {idx:2,effect:"待つ",prep_time:0,start_time:15,name1:"待機",image_url:""},
+  {idx:3,effect:"防御",prep_time:20,start_time:10,name1:"スキルB",image_url:""}
+];
 
-function initTabs(){
-  const tabs=document.getElementById("tabs");
-  tabs.innerHTML="";
-
-  Object.keys(sheetTabs).forEach(name=>{
-    const tab=document.createElement("div");
-    tab.className="tab";
-    tab.innerText=name;
-    tab.onclick=()=>switchTab(name);
-    tabs.appendChild(tab);
-  });
-
-  switchTab(Object.keys(sheetTabs)[0]);
-}
-
-function switchTab(name){
-  currentTab=name;
-
-  document.querySelectorAll(".tab")
-    .forEach(t=>t.classList.toggle("active",t.innerText===name));
-
-  document.getElementById("selected").innerHTML="";
-  updateTimes();
-
-  loadCsv(sheetTabs[name]);
-}
-
-function loadCsv(url){
-  Papa.parse(url,{
-    download:true,
-    header:true,
-    complete:function(res){
-      originalData=res.data
-        .filter(r=>r["効果"] || r["effect"])
-        .map((r,i)=>({
-          effect: r["効果"] || r["effect"] || "",
-          prep_time: Number(r["準備時間"] || r["prep_time"] || 0),
-          start_time: Number(r["発動時間"] || r["start_time"] || 0),
-          name1: r["name1"] || r["名前1"] || "",
-          name2: r["name2"] || r["名前2"] || "",
-          level: r["level"] || "",
-          image_url: r["image_url"] || "",
-          idx:i
-        }));
-
-      renderList(sortData(originalData));
-    }
-  });
-}
-
-function sortData(data){
-  return [...data].sort((a,b)=>
-    (a.prep_time+a.start_time)-(b.prep_time+b.start_time)
-  );
-}
-
-function renderList(data){
-  const list=document.getElementById("list");
-  const selectedIdxs=[...document.querySelectorAll("#selected .order")]
-    .map(div=>div.dataset.idx);
-
-  list.innerHTML="";
-
-  data.forEach(row=>{
-    const el=createOrder(row,false);
-
-    if(selectedIdxs.includes(String(row.idx))){
-      el.classList.add("disabled");
-      el.onclick=()=>highlightSelected(row.idx);
-    }else{
-      el.onclick=()=>addSelected(row);
-    }
-
-    list.appendChild(el);
-  });
+function formatTime(sec){
+  sec=Math.max(0,Number(sec)||0);
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  return m+"分"+s+"秒";
 }
 
 function createOrder(row,isSelected){
@@ -174,6 +122,12 @@ function createOrder(row,isSelected){
 
   if(row.effect==="待つ") div.classList.add("wait");
 
+  if(isSelected){
+    const timebox=document.createElement("div");
+    timebox.className="timebox";
+    div.appendChild(timebox);
+  }
+
   const img=document.createElement("img");
   img.src=row.image_url||"";
   div.appendChild(img);
@@ -181,13 +135,10 @@ function createOrder(row,isSelected){
   const info=document.createElement("div");
   info.className="info";
 
-  const level=row.level?` (${row.level})`:"";
-
   info.innerHTML=
-    row.effect+level+"<br>"+
+    row.effect+"<br>"+
     row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+
-    (row.name2?("<br>"+row.name2):"");
+    (row.name1||"");
 
   if(isSelected){
     const memo=document.createElement("input");
@@ -200,7 +151,13 @@ function createOrder(row,isSelected){
     div.ondblclick=()=>{
       div.remove();
       updateTimes();
-      renderList(sortData(originalData));
+      renderList();
+    };
+  }else{
+    div.onclick=()=>{
+      const copy=createOrder(row,true);
+      document.getElementById("selected").appendChild(copy);
+      updateTimes();
     };
   }
 
@@ -208,39 +165,15 @@ function createOrder(row,isSelected){
   return div;
 }
 
-function addSelected(row){
-  const sel=document.getElementById("selected");
-
-  if([...sel.querySelectorAll(".order")]
-    .some(d=>d.dataset.idx===String(row.idx))){
-    highlightSelected(row.idx);
-    return;
-  }
-
-  const el=createOrder(row,true);
-  sel.appendChild(el);
-
-  updateTimes();
-  renderList(sortData(originalData));
+function renderList(){
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  originalData.forEach(row=>{
+    list.appendChild(createOrder(row,false));
+  });
 }
 
-function highlightSelected(idx){
-  const target=[...document.querySelectorAll("#selected .order")]
-    .find(d=>d.dataset.idx===String(idx));
-
-  if(target){
-    target.classList.add("highlight");
-    setTimeout(()=>target.classList.remove("highlight"),600);
-  }
-}
-
-function formatTime(sec){
-  sec=Math.max(0,Number(sec)||0);
-  const m=Math.floor(sec/60);
-  const s=sec%60;
-  return m+"分"+s+"秒";
-}
-
+// ★ 元の「時間計算（待つ対応）」ロジックそのまま
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
 
@@ -260,43 +193,28 @@ function updateTimes(){
       base=Math.max(0,activation-start);
       total+=prep+start;
     }
+
+    const remain=base;
+    const activated=900-remain;
+
+    const box=div.querySelector(".timebox");
+    if(box){
+      box.innerHTML=
+        "残 "+formatTime(remain)+"<br>"+
+        "発 "+formatTime(activated);
+    }
   });
 
-  const remain=base;
-  const activated=900-remain;
-
   document.getElementById("totalTime").innerHTML=
-    "残り時間 "+formatTime(remain)+"<br>"+
-    "発動 "+formatTime(activated)+"<br><br>"+
+    "残り時間 "+formatTime(base)+"<br>"+
+    "発動 "+formatTime(900-base)+"<br><br>"+
     "合計: "+total+"秒";
 }
 
-function addWait(sec){
-  addSelected({
-    effect:"待つ",
-    prep_time:0,
-    start_time:sec,
-    name1:"",
-    name2:"",
-    image_url:"",
-    idx:"wait_"+Date.now()
-  });
-}
-
-function addCustomWait(){
-  const sec=Number(document.getElementById("waitInput").value);
-  if(sec>0) addWait(sec);
-  document.getElementById("waitInput").value="";
-}
-
-function resetAll(){
-  document.getElementById("selected").innerHTML="";
-  updateTimes();
-  renderList(sortData(originalData));
-}
-
-initTabs();
+renderList();
+updateTimes();
 
 </script>
+
 </body>
 </html>
