@@ -5,277 +5,219 @@
 <title>Order Composer</title>
 
 <style>
-body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
-.wrapper{width:1200px;margin:20px auto;}
-.title{font-size:20px;margin-bottom:10px;}
-.main{display:flex;gap:15px;}
-.panel{background:#fff;border:1px solid #ccc;padding:10px;}
-.left{width:420px;}
-.right{flex:1;}
-.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+body {
+  font-family: sans-serif;
+  margin: 0;
+}
 
-.order{display:flex;align-items:flex-start;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
-.order:hover{background:#eef6ff;}
-.order.wait{background:#e8e8e8;}
-.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
-.order.highlight{animation:flash 0.6s ease;}
-@keyframes flash{0%{background:#ffe082;}100%{background:#fafafa;}}
+.container {
+  display: flex;
+  height: 100vh;
+}
 
-.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
-.info{flex:1;line-height:1.3;word-break:break-all;display:flex;flex-direction:column;}
-.memo{width:100%;margin-top:4px;font-size:12px;box-sizing:border-box;}
-.timebox{width:140px;text-align:right;font-weight:bold;margin-right:6px;}
+.left, .right {
+  width: 50%;
+  padding: 10px;
+  overflow-y: auto;
+}
 
-.tabs{display:flex;gap:4px;margin-bottom:6px;}
-.tab{padding:4px 8px;background:#eee;cursor:pointer;border:1px solid #ccc;font-size:12px;}
-.tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;}
+.order-item {
+  padding: 6px;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+}
 
-.controls{margin-bottom:8px;}
-button{font-size:12px;padding:2px 6px;margin-right:4px;}
-.total{margin-top:6px;font-weight:bold;}
+.order-item.disabled {
+  background: #eee;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.selected-item {
+  padding: 6px;
+  border-bottom: 1px solid #ccc;
+}
+
+.selected-item.highlight {
+  background: #fff3cd;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+}
+
+.tab {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-right: 1px solid #ccc;
+}
+
+.tab.active {
+  background: #007bff;
+  color: white;
+}
+
+.memo {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #555;
+}
 </style>
 </head>
+
 <body>
 
-<div class="wrapper">
-<div class="title">Order Composer</div>
-<div class="main">
-
-<!-- 左側 -->
-<div class="panel left">
-
-<div class="controls">
-<button onclick="addWait(5)">+5秒</button>
-<button onclick="addWait(10)">+10秒</button>
-<input type="number" id="waitInput" style="width:70px;">
-<button onclick="addCustomWait()">追加</button>
-<button onclick="resetAll()">リセット</button>
-</div>
-
-<div id="selected" class="scroll"></div>
-<div class="total" id="totalTime">合計: 0秒</div>
-
-</div>
-
-<!-- 右側 -->
-<div class="panel right">
 <div class="tabs" id="tabs"></div>
-<div id="list" class="scroll"></div>
+
+<div class="container">
+  <div class="left">
+    <h3>オーダー一覧</h3>
+    <div id="orderList"></div>
+  </div>
+
+  <div class="right">
+    <h3>選択オーダー</h3>
+    <div id="selectedList"></div>
+  </div>
 </div>
 
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
+/* ===============================
+   4タブ設定
+================================ */
 
-// ★★★★★ スプレッドシート設定 ★★★★★
 const sheetTabs = {
 
-  "メイン": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
+  "マッチ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
 
-  "イベント": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv"
+  "マッチ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
 
+  "対ヒュージ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
+
+  "対ヒュージ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
 };
-// ★★★★★ ここまで ★★★★★
 
-let originalData=[];
-let currentTab=null;
+let currentTab = null;
+let allOrders = [];
+let selectedOrders = [];
 
-function initTabs(){
-  const tabs=document.getElementById("tabs");
-  tabs.innerHTML="";
+/* ===============================
+   タブ生成
+================================ */
 
-  Object.keys(sheetTabs).forEach(name=>{
-    const tab=document.createElement("div");
-    tab.className="tab";
-    tab.innerText=name;
-    tab.onclick=()=>switchTab(name);
-    tabs.appendChild(tab);
-  });
+function createTabs() {
+  const tabsDiv = document.getElementById("tabs");
+  tabsDiv.innerHTML = "";
 
-  switchTab(Object.keys(sheetTabs)[0]);
-}
+  Object.keys(sheetTabs).forEach((name, index) => {
+    const tab = document.createElement("div");
+    tab.className = "tab";
+    tab.textContent = name;
 
-function switchTab(name){
-  currentTab=name;
-
-  document.querySelectorAll(".tab")
-    .forEach(t=>t.classList.toggle("active",t.innerText===name));
-
-  loadCsv(sheetTabs[name]);
-}
-
-function loadCsv(url){
-  Papa.parse(url,{
-    download:true,
-    header:true,
-    complete:function(res){
-      originalData=res.data
-        .filter(r=>r.effect)
-        .map((r,i)=>({...r,idx:i}));
-
-      renderList(sortData(originalData));
-    },
-    error:function(){
-      alert("CSV読み込みエラー");
-    }
-  });
-}
-
-function sortData(data){
-  return [...data].sort((a,b)=>
-    (Number(a.prep_time)+Number(a.start_time))-
-    (Number(b.prep_time)+Number(b.start_time))
-  );
-}
-
-function renderList(data){
-  const list=document.getElementById("list");
-  const selectedIdxs=[...document.querySelectorAll("#selected .order")]
-    .map(div=>div.dataset.idx);
-
-  list.innerHTML="";
-
-  data.forEach(row=>{
-    const el=createOrder(row,false);
-
-    if(selectedIdxs.includes(String(row.idx))){
-      el.classList.add("disabled");
-      el.onclick=()=>highlightSelected(row.idx);
-    }else{
-      el.onclick=()=>addSelected(row);
+    if (index === 0) {
+      tab.classList.add("active");
+      currentTab = name;
+      loadCSV(sheetTabs[name]);
     }
 
-    list.appendChild(el);
-  });
-}
-
-function createOrder(row,isSelected){
-  const div=document.createElement("div");
-  div.className="order";
-  div.dataset.idx=row.idx;
-  div.dataset.prep=row.prep_time||0;
-  div.dataset.start=row.start_time||0;
-  div.dataset.effect=row.effect;
-
-  if(row.effect==="待つ") div.classList.add("wait");
-
-  if(isSelected){
-    const time=document.createElement("div");
-    time.className="timebox";
-    div.appendChild(time);
-  }
-
-  const img=document.createElement("img");
-  img.src=row.image_url||"";
-  div.appendChild(img);
-
-  const info=document.createElement("div");
-  info.className="info";
-
-  const level=row.level?` (${row.level})`:"";
-
-  info.innerHTML=
-    row.effect+level+"<br>"+
-    row.prep_time+"+"+row.start_time+"秒<br>"+
-    (row.name1||"")+
-    (row.name2?("<br>"+row.name2):"");
-
-  if(isSelected){
-    const memo=document.createElement("input");
-    memo.type="text";
-    memo.className="memo";
-    memo.placeholder="メモ";
-    memo.oninput=updateTimes;
-    info.appendChild(memo);
-
-    div.ondblclick=()=>{
-      div.remove();
-      updateTimes();
-      renderList(sortData(originalData));
+    tab.onclick = () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentTab = name;
+      selectedOrders = [];
+      renderSelected();
+      loadCSV(sheetTabs[name]);
     };
-  }
 
-  div.appendChild(info);
-  return div;
+    tabsDiv.appendChild(tab);
+  });
 }
 
-function addSelected(row){
-  const sel=document.getElementById("selected");
+/* ===============================
+   CSV読み込み
+================================ */
 
-  if([...sel.querySelectorAll(".order")]
-    .some(d=>d.dataset.idx===String(row.idx))){
-    highlightSelected(row.idx);
-    return;
-  }
-
-  const el=createOrder(row,true);
-  sel.appendChild(el);
-
-  updateTimes();
-  renderList(sortData(originalData));
+function loadCSV(url) {
+  fetch(url)
+    .then(res => res.text())
+    .then(text => {
+      const rows = text.split("\n").map(r => r.split(","));
+      const headers = rows[0];
+      allOrders = rows.slice(1).map(row => {
+        let obj = {};
+        headers.forEach((h, i) => obj[h.trim()] = row[i] || "");
+        return obj;
+      });
+      renderOrders();
+    });
 }
 
-function highlightSelected(idx){
-  const target=[...document.querySelectorAll("#selected .order")]
-    .find(d=>d.dataset.idx===String(idx));
+/* ===============================
+   左側表示
+================================ */
 
-  if(target){
-    target.classList.add("highlight");
-    setTimeout(()=>target.classList.remove("highlight"),600);
-  }
-}
+function renderOrders() {
+  const list = document.getElementById("orderList");
+  list.innerHTML = "";
 
-function updateTimes(){
-  const items=document.querySelectorAll("#selected .order");
+  allOrders.forEach(order => {
+    const div = document.createElement("div");
+    div.className = "order-item";
+    div.textContent = order["名前"] || order["name"] || "名称未設定";
 
-  let base=900;
-  let total=0;
-
-  items.forEach(div=>{
-    const prep=Number(div.dataset.prep);
-    const start=Number(div.dataset.start);
-    const effect=div.dataset.effect;
-
-    if(effect==="待つ"){
-      base=Math.max(0,base-start);
-      total+=start;
-    }else{
-      const activation=Math.max(0,base-prep);
-      base=Math.max(0,activation-start);
-      total+=prep+start;
+    if (selectedOrders.some(o => o["名前"] === order["名前"])) {
+      div.classList.add("disabled");
     }
-  });
 
-  document.getElementById("totalTime").innerText="合計: "+total+"秒";
-}
+    div.onclick = () => {
+      if (div.classList.contains("disabled")) return;
+      addOrder(order);
+    };
 
-function addWait(sec){
-  addSelected({
-    effect:"待つ",
-    prep_time:0,
-    start_time:sec,
-    name1:"",
-    name2:"",
-    image_url:"",
-    idx:"wait_"+Date.now()
+    list.appendChild(div);
   });
 }
 
-function addCustomWait(){
-  const sec=Number(document.getElementById("waitInput").value);
-  if(sec>0) addWait(sec);
-  document.getElementById("waitInput").value="";
+/* ===============================
+   右側追加
+================================ */
+
+function addOrder(order) {
+  if (selectedOrders.some(o => o["名前"] === order["名前"])) return;
+  selectedOrders.push(order);
+  renderSelected();
+  renderOrders();
 }
 
-function resetAll(){
-  document.getElementById("selected").innerHTML="";
-  document.getElementById("totalTime").innerText="合計: 0秒";
-  renderList(sortData(originalData));
+/* ===============================
+   右側表示
+================================ */
+
+function renderSelected() {
+  const list = document.getElementById("selectedList");
+  list.innerHTML = "";
+
+  selectedOrders.forEach(order => {
+    const div = document.createElement("div");
+    div.className = "selected-item";
+    div.innerHTML = `
+      <div>${order["名前"]}</div>
+      ${order["メモ"] ? `<div class="memo">${order["メモ"]}</div>` : ""}
+    `;
+    list.appendChild(div);
+  });
 }
 
-initTabs();
+/* ===============================
+   初期化
+================================ */
+
+createTabs();
 
 </script>
 </body>
