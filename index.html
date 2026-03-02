@@ -47,6 +47,7 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 </div>
 
 <div id="selected" class="scroll"></div>
+
 <div class="total" id="totalTime">
 残り時間 15分0秒 ／ 発動 0分0秒<br>合計: 0秒
 </div>
@@ -214,7 +215,7 @@ setTimeout(()=>target.classList.remove("highlight"),600);
 }
 }
 
-// ★ 元の時間計算ロジック（待つ対応）
+// ★ あなた指定の正しい計算ロジック
 function updateTimes(){
 const items=document.querySelectorAll("#selected .order");
 let base=900;
@@ -223,26 +224,20 @@ let total=0;
 items.forEach(div=>{
 const prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
-const effect=div.dataset.effect;
 
-if(effect==="待つ"){
-base=Math.max(0,base-start);
-total+=start;
-}else{
-const activation=Math.max(0,base-prep);
-base=Math.max(0,activation-start);
+const activatedTime=Math.max(0,base-prep);
+const nextBase=Math.max(0,activatedTime-start);
+
 total+=prep+start;
-}
-
-const remain=base;
-const activated=900-remain;
 
 const box=div.querySelector(".timebox");
 if(box){
 box.innerHTML=
-"残り "+formatTime(remain)+"<br>"+
-"発動 "+formatTime(activated);
+"残り "+formatTime(base)+"<br>"+
+"発動 "+formatTime(activatedTime);
 }
+
+base=nextBase;
 });
 
 document.getElementById("totalTime").innerHTML=
