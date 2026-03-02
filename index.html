@@ -4,122 +4,117 @@
 <meta charset="UTF-8">
 <title>Order Composer</title>
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <style>
-body{
-  font-family:sans-serif;
-  margin:0;
-  padding:0;
-}
+body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
 
-.tabs{
-  display:flex;
-  border-bottom:2px solid #ddd;
-  background:#f5f5f5;
-}
+.order{display:flex;align-items:flex-start;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
+.order:hover{background:#eef6ff;}
+.order.wait{background:#e8e8e8;}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
+.order.highlight{animation:flash 0.6s ease;}
+@keyframes flash{0%{background:#ffe082;}100%{background:#fafafa;}}
 
-.tab{
-  padding:12px 18px;
-  cursor:pointer;
-  border-right:1px solid #ddd;
-}
+.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
+.info{flex:1;line-height:1.3;word-break:break-all;display:flex;flex-direction:column;}
+.memo{width:100%;margin-top:4px;font-size:12px;box-sizing:border-box;}
+.timebox{width:140px;text-align:right;font-weight:bold;margin-right:6px;}
 
-.tab.active{
-  background:white;
-  font-weight:bold;
-}
+.tabs{display:flex;gap:4px;margin-bottom:6px;}
+.tab{padding:4px 8px;background:#eee;cursor:pointer;border:1px solid #ccc;font-size:12px;}
+.tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;}
 
-.container{
-  display:flex;
-  height:calc(100vh - 50px);
-}
-
-.panel{
-  flex:1;
-  padding:10px;
-  overflow-y:auto;
-}
-
-.panel h2{
-  margin-top:0;
-}
-
-.order{
-  border:1px solid #ccc;
-  padding:8px;
-  margin-bottom:6px;
-  cursor:pointer;
-  border-radius:6px;
-}
-
-.order:hover{
-  background:#f0f8ff;
-}
-
-.order.disabled{
-  background:#eee;
-  color:#999;
-  cursor:not-allowed;
-}
-
-.order.highlight{
-  background:#fff3cd;
-  border:2px solid orange;
-}
-
-.selected-summary{
-  margin-top:10px;
-  padding:8px;
-  background:#fafafa;
-  border-top:1px solid #ddd;
-}
+.controls{margin-bottom:8px;}
+button{font-size:12px;padding:2px 6px;margin-right:4px;}
+.total{margin-top:6px;font-weight:bold;}
 </style>
 </head>
 <body>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab(0)">マッチ全部</div>
-  <div class="tab" onclick="switchTab(1)">マッチ抜粋</div>
-  <div class="tab" onclick="switchTab(2)">対ヒュージ全部</div>
-  <div class="tab" onclick="switchTab(3)">対ヒュージ抜粋</div>
+<div class="wrapper">
+<div class="title">Order Composer</div>
+<div class="main">
+
+<!-- 左側 -->
+<div class="panel left">
+
+<div class="controls">
+<button onclick="addWait(5)">+5秒</button>
+<button onclick="addWait(10)">+10秒</button>
+<input type="number" id="waitInput" style="width:70px;">
+<button onclick="addCustomWait()">追加</button>
+<button onclick="resetAll()">リセット</button>
 </div>
 
-<div class="container">
-  <div class="panel">
-    <h2>オーダー一覧</h2>
-    <div id="orderList"></div>
-  </div>
+<div id="selected" class="scroll"></div>
+<div class="total" id="totalTime">合計: 0秒</div>
 
-  <div class="panel">
-    <h2>選択オーダー</h2>
-    <div id="selectedList"></div>
-
-    <div class="selected-summary" id="summary"></div>
-  </div>
 </div>
 
+<!-- 右側 -->
+<div class="panel right">
+<div class="tabs" id="tabs"></div>
+<div id="list" class="scroll"></div>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-const csvUrls = [
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
-];
 
-let originalData = [];
-let selectedData = [];
+// ★★★★★ 4タブ設定（UIそのまま） ★★★★★
+const sheetTabs = {
 
-function switchTab(index){
-  document.querySelectorAll(".tab").forEach((t,i)=>{
-    t.classList.toggle("active",i===index);
+  "マッチ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
+
+  "マッチ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
+
+  "対ヒュージ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
+
+  "対ヒュージ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
+
+};
+// ★★★★★ ここまで ★★★★★
+
+let originalData=[];
+let currentTab=null;
+
+function initTabs(){
+  const tabs=document.getElementById("tabs");
+  tabs.innerHTML="";
+
+  Object.keys(sheetTabs).forEach(name=>{
+    const tab=document.createElement("div");
+    tab.className="tab";
+    tab.innerText=name;
+    tab.onclick=()=>switchTab(name);
+    tabs.appendChild(tab);
   });
 
-  selectedData = [];
-  document.getElementById("selectedList").innerHTML="";
-  updateSummary();
+  switchTab(Object.keys(sheetTabs)[0]);
+}
 
-  loadCsv(csvUrls[index]);
+function switchTab(name){
+  currentTab=name;
+
+  document.querySelectorAll(".tab")
+    .forEach(t=>t.classList.toggle("active",t.innerText===name));
+
+  document.getElementById("selected").innerHTML="";
+  document.getElementById("totalTime").innerText="合計: 0秒";
+
+  loadCsv(sheetTabs[name]);
 }
 
 function loadCsv(url){
@@ -127,113 +122,172 @@ function loadCsv(url){
     download:true,
     header:true,
     complete:function(res){
+      originalData=res.data
+        .filter(r=>r.effect)
+        .map((r,i)=>({...r,idx:i}));
 
-      originalData = res.data
-        .filter(r => r["効果"] || r["effect"])
-        .map((r,i)=>({
-          name: r["名前"] || r["name"] || "",
-          prep_time: Number(r["準備時間"] || r["prep_time"] || 0),
-          start_time: Number(r["発動時間"] || r["start_time"] || 0),
-          effect: r["効果"] || r["effect"] || "",
-          idx:i
-        }));
-
-      renderList();
+      renderList(sortData(originalData));
+    },
+    error:function(){
+      alert("CSV読み込みエラー");
     }
   });
 }
 
-function renderList(){
-  const list = document.getElementById("orderList");
+function sortData(data){
+  return [...data].sort((a,b)=>
+    (Number(a.prep_time)+Number(a.start_time))-
+    (Number(b.prep_time)+Number(b.start_time))
+  );
+}
+
+function renderList(data){
+  const list=document.getElementById("list");
+  const selectedIdxs=[...document.querySelectorAll("#selected .order")]
+    .map(div=>div.dataset.idx);
+
   list.innerHTML="";
 
-  originalData.forEach(row=>{
-    const div = createOrder(row);
+  data.forEach(row=>{
+    const el=createOrder(row,false);
 
-    if(selectedData.some(s=>s.idx===row.idx)){
-      div.classList.add("disabled");
+    if(selectedIdxs.includes(String(row.idx))){
+      el.classList.add("disabled");
+      el.onclick=()=>highlightSelected(row.idx);
+    }else{
+      el.onclick=()=>addSelected(row);
     }
 
-    div.onclick=()=>{
-      if(selectedData.some(s=>s.idx===row.idx)){
-        highlightSelected(row.idx);
-        return;
-      }
-      addSelected(row);
-    };
-
-    list.appendChild(div);
+    list.appendChild(el);
   });
 }
 
-function createOrder(row){
+function createOrder(row,isSelected){
   const div=document.createElement("div");
   div.className="order";
-  div.dataset.id=row.idx;
+  div.dataset.idx=row.idx;
+  div.dataset.prep=row.prep_time||0;
+  div.dataset.start=row.start_time||0;
+  div.dataset.effect=row.effect;
 
-  div.innerHTML=`
-    <strong>${row.name}</strong><br>
-    準備時間 ${formatTime(row.prep_time)}<br>
-    発動時間 ${formatTime(row.start_time)}<br>
-    ${row.effect}
-  `;
+  if(row.effect==="待つ") div.classList.add("wait");
+
+  if(isSelected){
+    const time=document.createElement("div");
+    time.className="timebox";
+    div.appendChild(time);
+  }
+
+  const img=document.createElement("img");
+  img.src=row.image_url||"";
+  div.appendChild(img);
+
+  const info=document.createElement("div");
+  info.className="info";
+
+  const level=row.level?` (${row.level})`:"";
+
+  info.innerHTML=
+    row.effect+level+"<br>"+
+    row.prep_time+"+"+row.start_time+"秒<br>"+
+    (row.name1||"")+
+    (row.name2?("<br>"+row.name2):"");
+
+  if(isSelected){
+    const memo=document.createElement("input");
+    memo.type="text";
+    memo.className="memo";
+    memo.placeholder="メモ";
+    memo.oninput=updateTimes;
+    info.appendChild(memo);
+
+    div.ondblclick=()=>{
+      div.remove();
+      updateTimes();
+      renderList(sortData(originalData));
+    };
+  }
+
+  div.appendChild(info);
   return div;
 }
 
 function addSelected(row){
-  selectedData.push(row);
+  const sel=document.getElementById("selected");
 
-  const div=createOrder(row);
-  div.onclick=()=>{
-    selectedData=selectedData.filter(s=>s.idx!==row.idx);
-    renderList();
-    renderSelected();
-    updateSummary();
-  };
+  if([...sel.querySelectorAll(".order")]
+    .some(d=>d.dataset.idx===String(row.idx))){
+    highlightSelected(row.idx);
+    return;
+  }
 
-  document.getElementById("selectedList").appendChild(div);
+  const el=createOrder(row,true);
+  sel.appendChild(el);
 
-  renderList();
-  updateSummary();
-}
-
-function renderSelected(){
-  const list=document.getElementById("selectedList");
-  list.innerHTML="";
-  selectedData.forEach(row=>{
-    const div=createOrder(row);
-    list.appendChild(div);
-  });
+  updateTimes();
+  renderList(sortData(originalData));
 }
 
 function highlightSelected(idx){
-  const items=document.querySelectorAll("#selectedList .order");
-  items.forEach(i=>{
-    if(Number(i.dataset.id)===idx){
-      i.classList.add("highlight");
-      setTimeout(()=>i.classList.remove("highlight"),800);
+  const target=[...document.querySelectorAll("#selected .order")]
+    .find(d=>d.dataset.idx===String(idx));
+
+  if(target){
+    target.classList.add("highlight");
+    setTimeout(()=>target.classList.remove("highlight"),600);
+  }
+}
+
+function updateTimes(){
+  const items=document.querySelectorAll("#selected .order");
+
+  let base=900;
+  let total=0;
+
+  items.forEach(div=>{
+    const prep=Number(div.dataset.prep);
+    const start=Number(div.dataset.start);
+    const effect=div.dataset.effect;
+
+    if(effect==="待つ"){
+      base=Math.max(0,base-start);
+      total+=start;
+    }else{
+      const activation=Math.max(0,base-prep);
+      base=Math.max(0,activation-start);
+      total+=prep+start;
     }
+  });
+
+  document.getElementById("totalTime").innerText="合計: "+total+"秒";
+}
+
+function addWait(sec){
+  addSelected({
+    effect:"待つ",
+    prep_time:0,
+    start_time:sec,
+    name1:"",
+    name2:"",
+    image_url:"",
+    idx:"wait_"+Date.now()
   });
 }
 
-function updateSummary(){
-  const totalPrep = selectedData.reduce((sum,r)=>sum+r.prep_time,0);
-  const totalStart = selectedData.reduce((sum,r)=>sum+r.start_time,0);
-
-  document.getElementById("summary").innerHTML=
-    `合計準備時間 ${formatTime(totalPrep)}<br>
-     合計発動時間 ${formatTime(totalStart)}`;
+function addCustomWait(){
+  const sec=Number(document.getElementById("waitInput").value);
+  if(sec>0) addWait(sec);
+  document.getElementById("waitInput").value="";
 }
 
-function formatTime(sec){
-  sec = Number(sec) || 0;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}分${s}秒`;
+function resetAll(){
+  document.getElementById("selected").innerHTML="";
+  document.getElementById("totalTime").innerText="合計: 0秒";
+  renderList(sortData(originalData));
 }
 
-loadCsv(csvUrls[0]);
+initTabs();
+
 </script>
-
 </body>
 </html>
