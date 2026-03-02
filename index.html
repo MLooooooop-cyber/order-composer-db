@@ -5,65 +5,16 @@
 <title>Order Composer</title>
 
 <style>
-body{
-font-family:sans-serif;
-background:#f5f5f5;
-margin:0;
-padding:0;
-}
-
-.tabs{
-display:flex;
-background:#222;
-}
-
-.tabs button{
-flex:1;
-padding:12px;
-border:none;
-background:#333;
-color:white;
-cursor:pointer;
-}
-
-.tabs button.active{
-background:#007bff;
-}
-
-.container{
-display:flex;
-padding:10px;
-gap:10px;
-}
-
-.panel{
-flex:1;
-background:white;
-padding:10px;
-border-radius:6px;
-overflow:auto;
-max-height:80vh;
-}
-
-.order{
-border-bottom:1px solid #ddd;
-padding:6px 0;
-}
-
-.time-display{
-font-size:14px;
-color:#007bff;
-margin-top:4px;
-}
-
-.memo{
-width:100%;
-margin-top:4px;
-}
-
-button{
-margin-top:4px;
-}
+body{font-family:sans-serif;background:#f5f5f5;margin:0;padding:0;}
+.tabs{display:flex;background:#222;}
+.tabs button{flex:1;padding:12px;border:none;background:#333;color:white;cursor:pointer;}
+.tabs button.active{background:#007bff;}
+.container{display:flex;padding:10px;gap:10px;}
+.panel{flex:1;background:white;padding:10px;border-radius:6px;overflow:auto;max-height:80vh;}
+.order{border-bottom:1px solid #ddd;padding:6px 0;}
+.time-display{font-size:14px;color:#007bff;margin-top:4px;}
+.memo{width:100%;margin-top:4px;}
+button{margin-top:4px;}
 </style>
 </head>
 <body>
@@ -90,7 +41,6 @@ margin-top:4px;
 <div class="panel">
 <h3>選択オーダー</h3>
 <div id="selected"></div>
-
 <div style="margin-top:10px;">
 <input type="number" id="waitSeconds" placeholder="秒数">
 <button onclick="addWait()">待つ追加</button>
@@ -103,9 +53,7 @@ margin-top:4px;
 let originalData=[];
 let currentTab=1;
 
-// ===============================
-// タブ切り替え
-// ===============================
+// タブ
 function switchTab(tab){
 currentTab=tab;
 document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
@@ -113,9 +61,7 @@ document.getElementById("tab"+tab).classList.add("active");
 renderOrders();
 }
 
-// ===============================
-// CSV読み込み
-// ===============================
+// CSV
 document.getElementById("csvFile").addEventListener("change",function(e){
 const file=e.target.files[0];
 if(!file) return;
@@ -124,12 +70,10 @@ const reader=new FileReader();
 reader.onload=function(evt){
 const lines=evt.target.result.split("\n");
 originalData=[];
-
 lines.forEach((line,i)=>{
 if(i===0) return;
 const cols=line.split(",");
 if(cols.length<5) return;
-
 originalData.push({
 idx:i,
 tab:Number(cols[0]),
@@ -139,20 +83,15 @@ start:Number(cols[3]),
 effect:Number(cols[4])
 });
 });
-
 renderOrders();
 };
 reader.readAsText(file);
 });
 
-// ===============================
 function renderOrders(){
 const list=document.getElementById("orderList");
 list.innerHTML="";
-
-originalData
-.filter(o=>o.tab===currentTab)
-.forEach(o=>{
+originalData.filter(o=>o.tab===currentTab).forEach(o=>{
 const div=document.createElement("div");
 div.className="order";
 div.innerHTML=`
@@ -164,7 +103,6 @@ list.appendChild(div);
 });
 }
 
-// ===============================
 function addSelected(idx){
 const row=originalData.find(r=>r.idx===idx);
 if(!row) return;
@@ -187,13 +125,11 @@ document.getElementById("selected").appendChild(div);
 updateTimes();
 }
 
-// ===============================
 function addWait(){
 const sec=Number(document.getElementById("waitSeconds").value);
-if(!sec) return;
+if(!sec && sec!==0) return;
 
 const id="wait_"+Date.now();
-
 const div=document.createElement("div");
 div.className="order";
 div.dataset.idx=id;
@@ -211,34 +147,26 @@ document.getElementById("selected").appendChild(div);
 updateTimes();
 }
 
-// ===============================
 function removeOrder(btn){
 btn.parentElement.remove();
 updateTimes();
 }
 
-// ===============================
 function resetAll(){
 document.getElementById("selected").innerHTML="";
 updateTimes();
 }
 
-// ===============================
-// 時間計算（完全仕様）
-// ===============================
+// 時間計算
 function updateTimes(){
-let remaining=900; // 15分
-
+let remaining=900;
 document.querySelectorAll("#selected .order").forEach(div=>{
-
 const prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
 
 const remainText=formatTime(remaining);
-
 const activation=remaining-prep;
 const activationText=formatTime(activation);
-
 const effectEnd=remaining-prep-start;
 const effectText=formatTime(effectEnd);
 
@@ -251,26 +179,36 @@ remaining=effectEnd;
 });
 }
 
-// ===============================
 function formatTime(sec){
-
 const sign=sec<0?"-":"";
 sec=Math.abs(sec);
-
 const m=Math.floor(sec/60);
 const s=sec%60;
-
 return `${sign}${m}分${s.toString().padStart(2,"0")}秒`;
 }
 
 // ===============================
-// 共有機能（待つバグ修正版）
+// ★ 秒表示崩れ完全修正版 共有機能
 // ===============================
+
+// UTF8安全Base64
+function encodeData(obj){
+return btoa(
+String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj)))
+);
+}
+
+function decodeData(str){
+return JSON.parse(
+new TextDecoder().decode(
+Uint8Array.from(atob(str),c=>c.charCodeAt(0))
+)
+);
+}
+
 function shareOrders(){
 const items=[...document.querySelectorAll("#selected .order")];
-
-const data=items.map(div=>{
-return {
+const data=items.map(div=>({
 tab:currentTab,
 idx:div.dataset.idx,
 prep:Number(div.dataset.prep),
@@ -278,29 +216,21 @@ start:Number(div.dataset.start),
 effect:Number(div.dataset.effect),
 memo:div.querySelector(".memo")?
 div.querySelector(".memo").value:""
-};
-});
+}));
 
-const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-const url=location.origin+location.pathname+"?share="+encoded;
-
+const url=location.origin+location.pathname+"?share="+encodeData(data);
 navigator.clipboard.writeText(url);
 alert("共有URLをコピーしました");
 }
 
-// ===============================
-// 復元処理（完全一致版）
-// ===============================
+// 復元
 window.addEventListener("load",()=>{
 const params=new URLSearchParams(location.search);
 const share=params.get("share");
 if(!share) return;
 
 try{
-const decoded=JSON.parse(
-decodeURIComponent(escape(atob(share)))
-);
-
+const decoded=decodeData(share);
 if(decoded.length===0) return;
 
 switchTab(decoded[0].tab);
@@ -308,14 +238,12 @@ switchTab(decoded[0].tab);
 setTimeout(()=>{
 decoded.forEach(item=>{
 
-// ----- 待つ -----
 if(String(item.idx).startsWith("wait_")){
-
 const div=document.createElement("div");
 div.className="order";
 div.dataset.idx=item.idx;
 div.dataset.prep=0;
-div.dataset.start=item.start;
+div.dataset.start=Number(item.start);
 div.dataset.effect=0;
 
 div.innerHTML=`
@@ -323,22 +251,17 @@ div.innerHTML=`
 <div class="time-display"></div>
 <button onclick="removeOrder(this)">削除</button>
 `;
-
 document.getElementById("selected").appendChild(div);
 return;
 }
 
-// ----- 通常 -----
 const row=originalData.find(r=>String(r.idx)===String(item.idx));
 if(row){
 addSelected(row);
-
 const last=[...document.querySelectorAll("#selected .order")].pop();
-
-last.dataset.prep=item.prep;
-last.dataset.start=item.start;
-last.dataset.effect=item.effect;
-
+last.dataset.prep=Number(item.prep);
+last.dataset.start=Number(item.start);
+last.dataset.effect=Number(item.effect);
 if(item.memo){
 last.querySelector(".memo").value=item.memo;
 }
@@ -346,7 +269,7 @@ last.querySelector(".memo").value=item.memo;
 });
 
 updateTimes();
-},500);
+},300);
 
 }catch(e){
 console.log("復元エラー",e);
