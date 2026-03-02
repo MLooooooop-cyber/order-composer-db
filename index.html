@@ -28,7 +28,6 @@ body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
 .controls{margin-bottom:8px;}
 button{font-size:12px;padding:2px 6px;margin-right:4px;}
 .total{margin-top:6px;font-weight:bold;}
-.negative{color:red;}
 </style>
 </head>
 <body>
@@ -268,7 +267,7 @@ updateTimes();
 renderList(sortData(originalData));
 }
 
-// ===== 修正版共有機能 =====
+// ===== 共有 =====
 function shareOrders(){
 const items=[...document.querySelectorAll("#selected .order")];
 const data=items.map(div=>({
