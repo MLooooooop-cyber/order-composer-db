@@ -32,7 +32,7 @@ body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
 
 .controls{margin-bottom:8px;}
 button{font-size:12px;padding:2px 6px;margin-right:4px;}
-.total{margin-top:6px;font-weight:bold;}
+.total{margin-top:6px;font-weight:bold;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -53,7 +53,11 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 </div>
 
 <div id="selected" class="scroll"></div>
-<div class="total" id="totalTime">合計: 0秒</div>
+<div class="total" id="totalTime">
+残り時間 15分0秒<br>
+発動 0分0秒<br><br>
+合計: 0秒
+</div>
 
 </div>
 
@@ -69,23 +73,16 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 
-// ★★★★★ 4タブ設定（UIそのまま） ★★★★★
 const sheetTabs = {
-
   "マッチ全部":
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
-
   "マッチ抜粋":
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
-
   "対ヒュージ全部":
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
-
   "対ヒュージ抜粋":
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
-
 };
-// ★★★★★ ここまで ★★★★★
 
 let originalData=[];
 let currentTab=null;
@@ -112,7 +109,7 @@ function switchTab(name){
     .forEach(t=>t.classList.toggle("active",t.innerText===name));
 
   document.getElementById("selected").innerHTML="";
-  document.getElementById("totalTime").innerText="合計: 0秒";
+  updateTimes();
 
   loadCsv(sheetTabs[name]);
 }
@@ -123,21 +120,26 @@ function loadCsv(url){
     header:true,
     complete:function(res){
       originalData=res.data
-        .filter(r=>r.effect)
-        .map((r,i)=>({...r,idx:i}));
+        .filter(r=>r["効果"] || r["effect"])
+        .map((r,i)=>({
+          effect: r["効果"] || r["effect"] || "",
+          prep_time: Number(r["準備時間"] || r["prep_time"] || 0),
+          start_time: Number(r["発動時間"] || r["start_time"] || 0),
+          name1: r["name1"] || r["名前1"] || "",
+          name2: r["name2"] || r["名前2"] || "",
+          level: r["level"] || "",
+          image_url: r["image_url"] || "",
+          idx:i
+        }));
 
       renderList(sortData(originalData));
-    },
-    error:function(){
-      alert("CSV読み込みエラー");
     }
   });
 }
 
 function sortData(data){
   return [...data].sort((a,b)=>
-    (Number(a.prep_time)+Number(a.start_time))-
-    (Number(b.prep_time)+Number(b.start_time))
+    (a.prep_time+a.start_time)-(b.prep_time+b.start_time)
   );
 }
 
@@ -171,12 +173,6 @@ function createOrder(row,isSelected){
   div.dataset.effect=row.effect;
 
   if(row.effect==="待つ") div.classList.add("wait");
-
-  if(isSelected){
-    const time=document.createElement("div");
-    time.className="timebox";
-    div.appendChild(time);
-  }
 
   const img=document.createElement("img");
   img.src=row.image_url||"";
@@ -238,6 +234,13 @@ function highlightSelected(idx){
   }
 }
 
+function formatTime(sec){
+  sec=Math.max(0,Number(sec)||0);
+  const m=Math.floor(sec/60);
+  const s=sec%60;
+  return m+"分"+s+"秒";
+}
+
 function updateTimes(){
   const items=document.querySelectorAll("#selected .order");
 
@@ -259,7 +262,13 @@ function updateTimes(){
     }
   });
 
-  document.getElementById("totalTime").innerText="合計: "+total+"秒";
+  const remain=base;
+  const activated=900-remain;
+
+  document.getElementById("totalTime").innerHTML=
+    "残り時間 "+formatTime(remain)+"<br>"+
+    "発動 "+formatTime(activated)+"<br><br>"+
+    "合計: "+total+"秒";
 }
 
 function addWait(sec){
@@ -282,7 +291,7 @@ function addCustomWait(){
 
 function resetAll(){
   document.getElementById("selected").innerHTML="";
-  document.getElementById("totalTime").innerText="合計: 0秒";
+  updateTimes();
   renderList(sortData(originalData));
 }
 
