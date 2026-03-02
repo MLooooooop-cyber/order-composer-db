@@ -69,12 +69,20 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 
-// ★★★★★ スプレッドシート設定 ★★★★★
+// ★★★★★ 4タブ設定（UIそのまま） ★★★★★
 const sheetTabs = {
 
-  "メイン": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
+  "マッチ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
 
-  "イベント": "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv"
+  "マッチ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
+
+  "対ヒュージ全部":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
+
+  "対ヒュージ抜粋":
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
 
 };
 // ★★★★★ ここまで ★★★★★
@@ -102,6 +110,9 @@ function switchTab(name){
 
   document.querySelectorAll(".tab")
     .forEach(t=>t.classList.toggle("active",t.innerText===name));
+
+  document.getElementById("selected").innerHTML="";
+  document.getElementById("totalTime").innerText="合計: 0秒";
 
   loadCsv(sheetTabs[name]);
 }
