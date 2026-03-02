@@ -45,6 +45,7 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <input type="number" id="waitInput" style="width:70px;">
 <button onclick="addCustomWait()">追加</button>
 <button onclick="resetAll()">リセット</button>
+<button onclick="shareOrders()">共有URLコピー</button>
 </div>
 
 <div id="selected" class="scroll"></div>
@@ -67,7 +68,7 @@ button{font-size:12px;padding:2px 6px;margin-right:4px;}
 <script>
 
 // ===== 4タブ =====
-const sheetTabs = {
+const sheetTabs={
 "マッチ全部":"https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
 "マッチ抜粋":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
 "対ヒュージ全部":"https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
@@ -76,14 +77,14 @@ const sheetTabs = {
 
 let originalData=[];
 let currentTab=null;
+let restoreData=null;
 
-// ★ マイナス対応フォーマット
 function formatTime(sec){
-const sign = sec < 0 ? "-" : "";
-sec = Math.abs(sec);
+const sign=sec<0?"-":"";
+sec=Math.abs(sec);
 const m=Math.floor(sec/60);
 const s=sec%60;
-return sign + m + "分" + s + "秒";
+return sign+m+"分"+s+"秒";
 }
 
 function initTabs(){
@@ -117,6 +118,10 @@ originalData=res.data
 .filter(r=>r.effect)
 .map((r,i)=>({...r,idx:i}));
 renderList(sortData(originalData));
+
+if(restoreData){
+restoreFromData();
+}
 },
 error:function(){alert("CSV読み込みエラー");}
 });
@@ -218,7 +223,6 @@ setTimeout(()=>target.classList.remove("highlight"),600);
 }
 }
 
-// ★ マイナス表示対応時間計算
 function updateTimes(){
 const items=document.querySelectorAll("#selected .order");
 let base=900;
@@ -272,6 +276,52 @@ document.getElementById("selected").innerHTML="";
 updateTimes();
 renderList(sortData(originalData));
 }
+
+// ===== 共有機能 =====
+function shareOrders(){
+const items=[...document.querySelectorAll("#selected .order")];
+const data=items.map(div=>({
+tab:currentTab,
+idx:div.dataset.idx,
+memo:div.querySelector(".memo")?
+div.querySelector(".memo").value:""
+}));
+const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
+const url=location.origin+location.pathname+"?share="+encoded;
+navigator.clipboard.writeText(url);
+alert("共有URLをコピーしました");
+}
+
+function restoreFromData(){
+if(!restoreData) return;
+restoreData.forEach(item=>{
+if(String(item.idx).startsWith("wait_")){
+addWait(Number(item.idx.split("_")[1])||0);
+return;
+}
+const row=originalData.find(r=>String(r.idx)===String(item.idx));
+if(row){
+addSelected(row);
+const last=[...document.querySelectorAll("#selected .order")].pop();
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+}
+});
+restoreData=null;
+updateTimes();
+}
+
+window.addEventListener("load",()=>{
+const params=new URLSearchParams(location.search);
+const share=params.get("share");
+if(share){
+restoreData=JSON.parse(decodeURIComponent(atob(share)));
+if(restoreData.length>0){
+switchTab(restoreData[0].tab);
+}
+}
+});
 
 initTabs();
 updateTimes();
