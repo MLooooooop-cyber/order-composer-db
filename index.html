@@ -4,332 +4,204 @@
 <meta charset="UTF-8">
 <title>Order Composer</title>
 <style>
-body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
-.wrapper{width:1200px;margin:20px auto;}
-.title{font-size:20px;margin-bottom:10px;}
-.main{display:flex;gap:15px;}
-.panel{background:#fff;border:1px solid #ccc;padding:10px;}
-.left{width:420px;}
-.right{flex:1;}
-.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
-.order{display:flex;align-items:flex-start;border:1px solid #e0e0e0;margin-bottom:4px;padding:4px;background:#fafafa;cursor:pointer;}
-.order:hover{background:#eef6ff;}
-.order.wait{background:#e8e8e8;}
-.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
-.order.highlight{animation:flash 0.6s ease;}
-@keyframes flash{0%{background:#ffe082;}100%{background:#fafafa;}}
-.order img{width:36px;height:36px;object-fit:contain;margin-right:6px;}
-.info{flex:1;line-height:1.3;word-break:break-all;display:flex;flex-direction:column;}
-.memo{width:100%;margin-top:4px;font-size:12px;box-sizing:border-box;}
-.timebox{width:170px;text-align:right;font-weight:bold;margin-right:6px;line-height:1.4;}
-.tabs{display:flex;gap:4px;margin-bottom:6px;}
-.tab{padding:4px 8px;background:#eee;cursor:pointer;border:1px solid #ccc;font-size:12px;}
-.tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;}
-.controls{margin-bottom:8px;}
-button{font-size:12px;padding:2px 6px;margin-right:4px;}
-.total{margin-top:6px;font-weight:bold;}
+body {font-family:sans-serif;margin:0;display:flex;height:100vh;}
+#left {width:50%;overflow-y:auto;border-right:1px solid #ccc;}
+#right {width:50%;display:flex;flex-direction:column;}
+.tabs {display:flex;background:#eee;}
+.tab {padding:10px;cursor:pointer;}
+.tab.active {background:#fff;border-bottom:2px solid #000;}
+.order {border-bottom:1px solid #ddd;padding:8px;cursor:pointer;}
+.selected {flex:1;overflow-y:auto;border-bottom:1px solid #ccc;}
+.selected .order {background:#f9f9f9;}
+.time {font-size:12px;color:#555;margin-top:4px;}
+button {margin:5px;}
+.memo {width:100%;margin-top:4px;}
 </style>
 </head>
 <body>
 
-<div class="wrapper">
-<div class="title">Order Composer</div>
-<div class="main">
-
-<div class="panel left">
-<div class="controls">
-<button onclick="addWait(5)">+5秒</button>
-<button onclick="addWait(10)">+10秒</button>
-<input type="number" id="waitInput" style="width:70px;">
-<button onclick="addCustomWait()">追加</button>
-<button onclick="resetAll()">リセット</button>
-<button onclick="shareOrders()">共有URLコピー</button>
+<div id="left">
+  <div class="tabs">
+    <div class="tab active" data-tab="match_all">マッチ全部</div>
+    <div class="tab" data-tab="match_pick">マッチ抜粋</div>
+    <div class="tab" data-tab="huge_all">対ヒュージ全部</div>
+    <div class="tab" data-tab="huge_pick">対ヒュージ抜粋</div>
+  </div>
+  <div id="list"></div>
 </div>
 
-<div id="selected" class="scroll"></div>
-
-<div class="total" id="totalTime">
-残り時間 15分0秒 ／ 発動 0分0秒<br>合計: 0秒
-</div>
-</div>
-
-<div class="panel right">
-<div class="tabs" id="tabs"></div>
-<div id="list" class="scroll"></div>
+<div id="right">
+  <div class="selected" id="selected"></div>
+  <div>
+    <button onclick="addWait()">待つ</button>
+    <button onclick="shareOrders()">共有</button>
+  </div>
 </div>
 
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-
-const sheetTabs={
-"マッチ全部":"https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv",
-"マッチ抜粋":"https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8kWKqg_F9WbS-RrORRAv2JAuIdRFW4nAqa8Kr0mCVoOBq38L1d6KWWIwr3tMDTMP_zjgGMQAhtgJf/pub?output=csv",
-"対ヒュージ全部":"https://docs.google.com/spreadsheets/d/e/2PACX-1vRrbl7KlmckTwepgTYSOxK9w2nTI2gLtgN2PYgqXDXtDzsSHGgiY5FM3SHPYCGoSDW4umNRpBxGguv9/pub?output=csv",
-"対ヒュージ抜粋":"https://docs.google.com/spreadsheets/d/e/2PACX-1vSAKIyowf9Shrwg84hXR1yLFS-AqaKO0BGKRd9HX3Ro1TKxitsVYp4yCWY6acyzUlISAAZMKIbYwsef/pub?output=csv"
+const CSV_URLS = {
+match_all: "★ここにCSV1",
+match_pick: "★ここにCSV2",
+huge_all: "★ここにCSV3",
+huge_pick: "★ここにCSV4"
 };
 
+let currentTab="match_all";
 let originalData=[];
-let currentTab=null;
 let restoreData=null;
+const TOTAL_TIME=900;
+
+function parseCSV(text){
+const rows=text.trim().split("\n").map(r=>r.split(","));
+const header=rows.shift();
+return rows.map(r=>{
+let obj={};
+header.forEach((h,i)=>obj[h.trim()]=r[i]);
+return obj;
+});
+}
+
+async function loadCSV(tab){
+const res=await fetch(CSV_URLS[tab]);
+const text=await res.text();
+const parsed=parseCSV(text);
+
+originalData=parsed.map(r=>({
+...r,
+uid:r.id
+}));
+
+originalData.sort((a,b)=>Number(a.order)-Number(b.order));
+
+renderList();
+if(restoreData) restoreFromData();
+}
+
+function renderList(){
+const list=document.getElementById("list");
+list.innerHTML="";
+originalData.forEach(row=>{
+const div=document.createElement("div");
+div.className="order";
+div.textContent=row.effect;
+div.onclick=()=>addSelected(row);
+list.appendChild(div);
+});
+}
+
+function addSelected(row){
+const div=document.createElement("div");
+div.className="order";
+div.dataset.uid=row.uid||("wait_"+Date.now());
+div.dataset.prep=row.prep_time||0;
+div.dataset.start=row.start_time||0;
+
+div.innerHTML=`
+<strong>${row.effect}</strong>
+<div class="time"></div>
+<textarea class="memo" placeholder="メモ"></textarea>
+`;
+
+document.getElementById("selected").appendChild(div);
+updateTimes();
+}
+
+function addWait(){
+const sec=prompt("待つ秒数を入力");
+if(!sec) return;
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:Number(sec),
+uid:"wait_"+Date.now()
+});
+}
 
 function formatTime(sec){
 const sign=sec<0?"-":"";
 sec=Math.abs(sec);
 const m=Math.floor(sec/60);
 const s=sec%60;
-return sign+m+"分"+s+"秒";
-}
-
-function initTabs(){
-const tabs=document.getElementById("tabs");
-tabs.innerHTML="";
-Object.keys(sheetTabs).forEach(name=>{
-const tab=document.createElement("div");
-tab.className="tab";
-tab.innerText=name;
-tab.onclick=()=>switchTab(name);
-tabs.appendChild(tab);
-});
-switchTab(Object.keys(sheetTabs)[0]);
-}
-
-function switchTab(name){
-currentTab=name;
-document.querySelectorAll(".tab")
-.forEach(t=>t.classList.toggle("active",t.innerText===name));
-document.getElementById("selected").innerHTML="";
-updateTimes();
-loadCsv(sheetTabs[name]);
-}
-
-function loadCsv(url){
-Papa.parse(url,{
-download:true,
-header:true,
-complete:function(res){
-originalData=res.data
-.filter(r=>r.effect)
-.map((r,i)=>({...r,idx:i}));
-renderList(sortData(originalData));
-if(restoreData){ restoreFromData(); }
-}
-});
-}
-
-function sortData(data){
-return [...data].sort((a,b)=>
-(Number(a.prep_time)+Number(a.start_time))-
-(Number(b.prep_time)+Number(b.start_time))
-);
-}
-
-function renderList(data){
-const list=document.getElementById("list");
-const selectedIdxs=[...document.querySelectorAll("#selected .order")]
-.map(div=>div.dataset.idx);
-list.innerHTML="";
-data.forEach(row=>{
-const el=createOrder(row,false);
-if(selectedIdxs.includes(String(row.idx))){
-el.classList.add("disabled");
-el.onclick=()=>highlightSelected(row.idx);
-}else{
-el.onclick=()=>addSelected(row);
-}
-list.appendChild(el);
-});
-}
-
-function createOrder(row,isSelected){
-const div=document.createElement("div");
-div.className="order";
-div.dataset.idx=row.idx;
-div.dataset.prep=row.prep_time||0;
-div.dataset.start=row.start_time||0;
-div.dataset.effect=row.effect;
-
-if(row.effect==="待つ") div.classList.add("wait");
-
-if(isSelected){
-const time=document.createElement("div");
-time.className="timebox";
-div.appendChild(time);
-}
-
-const img=document.createElement("img");
-img.src=row.image_url||"";
-div.appendChild(img);
-
-const info=document.createElement("div");
-info.className="info";
-
-info.innerHTML=
-row.effect+"<br>"+
-row.prep_time+"+"+row.start_time+"秒<br>"+
-(row.name1||"")+
-(row.name2?("<br>"+row.name2):"");
-
-if(isSelected){
-const memo=document.createElement("input");
-memo.type="text";
-memo.className="memo";
-memo.placeholder="メモ";
-memo.oninput=updateTimes;
-info.appendChild(memo);
-
-div.ondblclick=()=>{
-div.remove();
-updateTimes();
-renderList(sortData(originalData));
-};
-}
-
-div.appendChild(info);
-return div;
-}
-
-function addSelected(row){
-const sel=document.getElementById("selected");
-if([...sel.querySelectorAll(".order")]
-.some(d=>d.dataset.idx===String(row.idx))){
-highlightSelected(row.idx);
-return;
-}
-const el=createOrder(row,true);
-sel.appendChild(el);
-updateTimes();
-renderList(sortData(originalData));
-}
-
-function highlightSelected(idx){
-const target=[...document.querySelectorAll("#selected .order")]
-.find(d=>d.dataset.idx===String(idx));
-if(target){
-target.classList.add("highlight");
-setTimeout(()=>target.classList.remove("highlight"),600);
-}
+return sign+m+"分"+String(s).padStart(2,"0")+"秒";
 }
 
 function updateTimes(){
-const items=document.querySelectorAll("#selected .order");
-let base=900;
-let total=0;
+let remain=TOTAL_TIME;
+const items=[...document.querySelectorAll("#selected .order")];
 
 items.forEach(div=>{
 const prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
 
-const activatedTime=base-prep;
-const nextBase=activatedTime-start;
+const trigger=remain-prep;
+const end=remain-prep-start;
 
-total+=prep+start;
+div.querySelector(".time").innerHTML=
+`残り時間 ${formatTime(remain)}<br>
+発動 ${formatTime(trigger)}<br>
+効果終了 ${formatTime(end)}`;
 
-const box=div.querySelector(".timebox");
-if(box){
-box.innerHTML=
-"残り "+formatTime(base)+"<br>"+
-"発動 "+formatTime(activatedTime)+"<br>"+
-"効果終了 "+formatTime(nextBase);
-}
-
-base=nextBase;
-});
-
-document.getElementById("totalTime").innerHTML=
-"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
-"<br>合計: "+total+"秒";
-}
-
-function addWait(sec){
-addSelected({
-effect:"待つ",
-prep_time:0,
-start_time:sec,
-name1:"",
-name2:"",
-image_url:"",
-idx:"wait_"+Date.now()
+remain=end;
 });
 }
 
-function addCustomWait(){
-const sec=Number(document.getElementById("waitInput").value);
-if(sec>0) addWait(sec);
-document.getElementById("waitInput").value="";
-}
-
-function resetAll(){
-document.getElementById("selected").innerHTML="";
-updateTimes();
-renderList(sortData(originalData));
-}
-
-// ===== 共有 =====
 function shareOrders(){
 const items=[...document.querySelectorAll("#selected .order")];
 const data=items.map(div=>({
-tab:currentTab,
-idx:div.dataset.idx,
+uid:div.dataset.uid,
 prep:div.dataset.prep,
 start:div.dataset.start,
-memo:div.querySelector(".memo")?
-div.querySelector(".memo").value:""
+memo:div.querySelector(".memo").value
 }));
-const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
-const url=location.origin+location.pathname+"?share="+encoded;
+const encoded=btoa(JSON.stringify(data));
+const url=location.origin+location.pathname+"?s="+encoded;
 navigator.clipboard.writeText(url);
 alert("共有URLをコピーしました");
 }
 
 function restoreFromData(){
-if(!restoreData) return;
-
 restoreData.forEach(item=>{
-
-if(String(item.idx).startsWith("wait_")){
+if(String(item.uid).startsWith("wait_")){
 addSelected({
 effect:"待つ",
-prep_time:Number(item.prep),
-start_time:Number(item.start),
-name1:"",
-name2:"",
-image_url:"",
-idx:item.idx
+prep_time:item.prep,
+start_time:item.start,
+uid:item.uid
 });
 return;
 }
-
-const row=originalData.find(r=>String(r.idx)===String(item.idx));
+const row=originalData.find(r=>String(r.uid)===String(item.uid));
 if(row){
 addSelected(row);
 const last=[...document.querySelectorAll("#selected .order")].pop();
-if(last && item.memo){
-last.querySelector(".memo").value=item.memo;
-}
+last.querySelector(".memo").value=item.memo||"";
 }
 });
-
 restoreData=null;
 updateTimes();
 }
 
-window.addEventListener("load",()=>{
-const params=new URLSearchParams(location.search);
-const share=params.get("share");
-if(share){
-restoreData=JSON.parse(decodeURIComponent(atob(share)));
-if(restoreData.length>0){
-switchTab(restoreData[0].tab);
+function switchTab(tab){
+currentTab=tab;
+document.querySelectorAll(".tab").forEach(t=>{
+t.classList.toggle("active",t.dataset.tab===tab);
+});
+loadCSV(tab);
 }
-}
+
+document.querySelectorAll(".tab").forEach(tab=>{
+tab.onclick=()=>switchTab(tab.dataset.tab);
 });
 
-initTabs();
-updateTimes();
+function checkRestore(){
+const params=new URLSearchParams(location.search);
+if(params.has("s")){
+restoreData=JSON.parse(atob(params.get("s")));
+}
+}
 
+checkRestore();
+loadCSV(currentTab);
 </script>
 </body>
 </html>
