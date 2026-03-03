@@ -250,8 +250,15 @@ alert("共有URLをコピーしました");
 function restoreFromData(){
 restoreData.forEach(item=>{
 if(String(item.idx).startsWith("wait_")){
-addWait(Number(item.start));
-return;
+    const sel=document.getElementById("selected");
+    const el=createOrder({
+        effect:"待つ",
+        prep_time:0,
+        start_time:item.start,
+        idx:item.idx
+    },true);
+    sel.appendChild(el);
+    return;
 }
 const row=originalData.find(r=>String(r.idx)===String(item.idx));
 if(row){
