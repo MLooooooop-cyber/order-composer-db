@@ -320,14 +320,20 @@ updateTimes();
 }
 
 window.addEventListener("load",()=>{
-const params=new URLSearchParams(location.search);
-const share=params.get("share");
-if(share){
-restoreData=JSON.parse(decodeURIComponent(atob(share)));
-if(restoreData.length>0){
-switchTab(restoreData[0].tab);
-}
-}
+
+  initTabs();   // ← 先にタブ初期化
+
+  const params=new URLSearchParams(location.search);
+  const share=params.get("share");
+
+  if(share){
+    restoreData=JSON.parse(decodeURIComponent(atob(share)));
+    if(restoreData.length>0){
+      switchTab(restoreData[0].tab);
+    }
+  }
+
+  updateTimes();
 });
 
 initTabs();
