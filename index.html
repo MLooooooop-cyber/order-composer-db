@@ -112,6 +112,8 @@ download:true,
 header:true,
 complete:function(res){
 
+console.log(res.data);   // ← これを追加
+  
 originalData=res.data
 .filter(r=>r.effect)
 .map(r=>({
