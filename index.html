@@ -111,8 +111,11 @@ download:true,
 header:true,
 complete:function(res){
 originalData=res.data
-.filter(r=>r.effect)
-.map((r,i)=>({...r,idx:i}));
+.filter(r=>r.effect && r.id)
+.map(r=>({
+  ...r,
+  idx: String(r.id).trim()   // ← CSVのid列を使用
+}));
 renderList(sortData(originalData));
 if(restoreData){ restoreFromData(); }
 }
