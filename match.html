@@ -5,24 +5,16 @@
 <title>Order Composer - Match</title>
 
 <style>
-
 body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
-
 .wrapper{width:1200px;margin:20px auto;}
-
 .title{font-size:20px;margin-bottom:10px;}
-
 .main{display:flex;gap:15px;}
 
 .panel{background:#fff;border:1px solid #ccc;padding:10px;}
-
 .left{width:420px;}
-
 .right{flex:1;}
 
 .scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
-
-/* オーダー */
 
 .order{
 display:flex;
@@ -30,19 +22,12 @@ align-items:flex-start;
 border:1px solid #e0e0e0;
 margin-bottom:4px;
 padding:4px;
-cursor:pointer;
-border-radius:6px;
-transition:background 0.15s;
 background:#fafafa;
+cursor:pointer;
 }
 
 .order.wait{background:#e8e8e8;}
-
-.order.disabled{
-background:#ddd !important;
-opacity:0.5;
-cursor:not-allowed;
-}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
 
 .order.dragging{opacity:0.4;}
 
@@ -51,32 +36,6 @@ cursor:not-allowed;
 @keyframes flash{
 0%{background:#ffe082;}
 100%{background:#fafafa;}
-}
-
-/* 属性カラー（かなり薄い） */
-
-.attr-fire{
-background:linear-gradient(135deg,#ffe5e5 50%,#ffffff 50%);
-}
-
-.attr-water{
-background:linear-gradient(135deg,#e6f2ff 50%,#ffffff 50%);
-}
-
-.attr-wind{
-background:linear-gradient(135deg,#e8ffe8 50%,#ffffff 50%);
-}
-
-.attr-fire-water{
-background:linear-gradient(135deg,#ffe5e5 50%,#e6f2ff 50%);
-}
-
-.attr-fire-wind{
-background:linear-gradient(135deg,#ffe5e5 50%,#e8ffe8 50%);
-}
-
-.attr-water-wind{
-background:linear-gradient(135deg,#e6f2ff 50%,#e8ffe8 50%);
 }
 
 .order img{
@@ -134,6 +93,34 @@ padding:3px;
 font-size:12px;
 }
 
+/* 属性カラー（かなり薄い） */
+
+.attr-fire{
+background:#fff2f2;
+}
+
+.attr-water{
+background:#f2f6ff;
+}
+
+.attr-wind{
+background:#f2fff2;
+}
+
+/* 2属性分割（左上→右下） */
+
+.attr-fire-water{
+background:linear-gradient(135deg,#fff2f2 50%,#f2f6ff 50%);
+}
+
+.attr-fire-wind{
+background:linear-gradient(135deg,#fff2f2 50%,#f2fff2 50%);
+}
+
+.attr-water-wind{
+background:linear-gradient(135deg,#f2f6ff 50%,#f2fff2 50%);
+}
+
 </style>
 </head>
 
@@ -148,7 +135,6 @@ font-size:12px;
 <div class="panel left">
 
 <div class="controls">
-
 <button onclick="addWait(5)">+5秒</button>
 <button onclick="addWait(10)">+10秒</button>
 
@@ -158,7 +144,6 @@ font-size:12px;
 <button onclick="resetAll()">リセット</button>
 
 <button onclick="shareOrders()">共有URLコピー</button>
-
 </div>
 
 <div id="selected" class="scroll"></div>
@@ -202,21 +187,14 @@ let restoreData=null;
 let dragItem=null;
 
 function formatTime(sec){
-
 const sign=sec<0?"-":"";
-
 sec=Math.abs(sec);
-
 const m=Math.floor(sec/60);
-
 const s=sec%60;
-
 return sign+m+"分"+s+"秒";
-
 }
 
 function loadCsv(){
-
 Papa.parse(csvURL,{
 download:true,
 header:true,
@@ -237,16 +215,13 @@ restoreFromData();
 
 }
 });
-
 }
 
 function sortData(data){
-
 return [...data].sort((a,b)=>
 (Number(a.prep_time)+Number(a.start_time))-
 (Number(b.prep_time)+Number(b.start_time))
 );
-
 }
 
 function applyFilter(){
@@ -306,13 +281,10 @@ function createOrder(row,isSelected){
 const div=document.createElement("div");
 
 div.className="order";
-
 div.dataset.idx=row.idx;
 div.dataset.prep=row.prep_time||0;
 div.dataset.start=row.start_time||0;
 div.dataset.effect=row.effect;
-
-/* 属性判定 */
 
 const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
 
@@ -358,13 +330,11 @@ e.preventDefault();
 
 div.addEventListener("drop",(e)=>{
 e.preventDefault();
-
 if(dragItem && dragItem!==div){
 
 const parent=div.parentNode;
 
 const rect=div.getBoundingClientRect();
-
 const offset=e.clientY-rect.top;
 
 if(offset>rect.height/2){
@@ -376,7 +346,6 @@ parent.insertBefore(dragItem,div);
 updateTimes();
 
 }
-
 });
 
 const time=document.createElement("div");
@@ -405,7 +374,6 @@ memo.type="text";
 memo.className="memo";
 memo.placeholder="メモ";
 memo.oninput=updateTimes;
-
 info.appendChild(memo);
 
 div.ondblclick=()=>{
@@ -471,7 +439,6 @@ const prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
 
 const activatedTime=base-prep;
-
 const nextBase=activatedTime-start;
 
 total+=prep+start;
