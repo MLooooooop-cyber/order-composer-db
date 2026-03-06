@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -30,13 +31,9 @@ cursor:pointer;
 .order.wait{background:#e8e8e8;}
 .order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
 
-.order.dragging{
-opacity:0.4;
-}
+.order.dragging{opacity:0.4;}
 
-.order.highlight{
-animation:flash 0.6s ease;
-}
+.order.highlight{animation:flash 0.6s ease;}
 
 @keyframes flash{
 0%{background:#ffe082;}
@@ -91,6 +88,12 @@ margin-right:10px;
 font-size:12px;
 cursor:pointer;
 }
+
+#searchBox{
+width:200px;
+padding:3px;
+font-size:12px;
+}
 </style>
 </head>
 
@@ -126,15 +129,17 @@ cursor:pointer;
 
 <div class="panel right">
 
-<div id="typeFilters" style="margin-bottom:8px;">
+<div style="margin-bottom:6px;">
+<input type="text" id="searchBox" placeholder="スキル検索">
+</div>
 
+<div id="typeFilters" style="margin-bottom:8px;">
 <label><input type="checkbox" value="属性" checked>属性</label>
 <label><input type="checkbox" value="バフデバフ" checked>バフデバフ</label>
 <label><input type="checkbox" value="発動率" checked>発動率</label>
 <label><input type="checkbox" value="MP" checked>MP</label>
 <label><input type="checkbox" value="盾" checked>盾</label>
 <label><input type="checkbox" value="その他" checked>その他</label>
-
 </div>
 
 <div id="list" class="scroll"></div>
@@ -198,11 +203,23 @@ const checks=[
 ...document.querySelectorAll("#typeFilters input:checked")
 ].map(c=>c.value);
 
-const filtered=originalData.filter(row=>
-checks.includes(row.type)
+const word=document.getElementById("searchBox").value.toLowerCase();
+
+let data=originalData;
+
+data=data.filter(row=>checks.includes(row.type));
+
+if(word){
+
+data=data.filter(row=>
+(row.effect||"").toLowerCase().includes(word) ||
+(row.name1||"").toLowerCase().includes(word) ||
+(row.name2||"").toLowerCase().includes(word)
 );
 
-renderList(sortData(filtered));
+}
+
+renderList(sortData(data));
 
 }
 
@@ -508,6 +525,9 @@ document.querySelectorAll("#typeFilters input")
 cb.addEventListener("change",applyFilter);
 });
 
+document.getElementById("searchBox")
+.addEventListener("input",applyFilter);
+
 window.addEventListener("load",()=>{
 
 const params=new URLSearchParams(location.search);
@@ -528,3 +548,4 @@ updateTimes();
 
 </body>
 </html>
+```
