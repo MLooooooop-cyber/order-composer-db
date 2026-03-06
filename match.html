@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -249,6 +248,38 @@ list.appendChild(el);
 
 }
 
+function applyElementColor(div,row){
+
+const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
+
+const fire=text.includes("火");
+const water=text.includes("水");
+const wind=text.includes("風");
+
+if(fire && !water && !wind){
+div.style.background="#ffe5e5";
+}
+else if(water && !fire && !wind){
+div.style.background="#e5f0ff";
+}
+else if(wind && !fire && !water){
+div.style.background="#e6ffe5";
+}
+else if(fire && water && !wind){
+div.style.background="linear-gradient(135deg,#ffe5e5 50%,#e5f0ff 50%)";
+}
+else if(fire && wind && !water){
+div.style.background="linear-gradient(135deg,#ffe5e5 50%,#e6ffe5 50%)";
+}
+else if(water && wind && !fire){
+div.style.background="linear-gradient(135deg,#e5f0ff 50%,#e6ffe5 50%)";
+}
+else if(fire && water && wind){
+div.style.background="linear-gradient(135deg,#ffe5e5 33%,#e5f0ff 33%,#e5f0ff 66%,#e6ffe5 66%)";
+}
+
+}
+
 function createOrder(row,isSelected){
 
 const div=document.createElement("div");
@@ -258,6 +289,8 @@ div.dataset.idx=row.idx;
 div.dataset.prep=row.prep_time||0;
 div.dataset.start=row.start_time||0;
 div.dataset.effect=row.effect;
+
+applyElementColor(div,row);
 
 if(row.effect==="待つ"){
 div.classList.add("wait");
@@ -286,9 +319,7 @@ e.preventDefault();
 if(dragItem && dragItem!==div){
 
 const parent=div.parentNode;
-
 const rect=div.getBoundingClientRect();
-
 const offset=e.clientY-rect.top;
 
 if(offset>rect.height/2){
@@ -384,7 +415,6 @@ function updateTimes(){
 const items=document.querySelectorAll("#selected .order");
 
 let base=900;
-
 let total=0;
 
 items.forEach(div=>{
@@ -548,4 +578,3 @@ updateTimes();
 
 </body>
 </html>
-```
