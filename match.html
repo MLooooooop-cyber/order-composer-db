@@ -1,230 +1,551 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スキルマッチツール</title>
+<title>Order Composer - Match</title>
 
 <style>
+body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
 
-body{
-font-family:sans-serif;
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
+
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+
+.order{
 display:flex;
-gap:20px;
-padding:20px;
-}
-
-#skillList{
-width:300px;
-height:500px;
-overflow:auto;
-border:1px solid #aaa;
-}
-
-#selected{
-width:250px;
-height:500px;
-border:1px solid #aaa;
-overflow:auto;
-}
-
-.skill{
-padding:6px;
+align-items:flex-start;
+border:1px solid #e0e0e0;
+margin-bottom:4px;
+padding:4px;
+background:#fafafa;
 cursor:pointer;
-border-bottom:1px solid #eee;
 }
 
-.skill:hover{
-background:#eee;
+.order:hover{background:#eef6ff;}
+.order.wait{background:#e8e8e8;}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
+
+.order.dragging{opacity:0.4;}
+
+.order.highlight{animation:flash 0.6s ease;}
+
+@keyframes flash{
+0%{background:#ffe082;}
+100%{background:#fafafa;}
 }
 
-.tab{
-display:inline-block;
-padding:5px 10px;
-border:1px solid #aaa;
+.order img{
+width:36px;
+height:36px;
+object-fit:contain;
+margin-right:6px;
+}
+
+.info{
+flex:1;
+line-height:1.3;
+word-break:break-all;
+display:flex;
+flex-direction:column;
+}
+
+.memo{
+width:100%;
+margin-top:4px;
+font-size:12px;
+box-sizing:border-box;
+}
+
+.timebox{
+width:170px;
+text-align:right;
+font-weight:bold;
+margin-right:6px;
+line-height:1.4;
+}
+
+.controls{margin-bottom:8px;}
+
+button{
+font-size:12px;
+padding:2px 6px;
+margin-right:4px;
+}
+
+.total{
+margin-top:6px;
+font-weight:bold;
+}
+
+#typeFilters label{
+margin-right:10px;
+font-size:12px;
 cursor:pointer;
-margin-right:5px;
 }
 
-.tab.active{
-background:#ddd;
+#searchBox{
+width:200px;
+padding:3px;
+font-size:12px;
 }
-
-.selectedItem{
-padding:5px;
-border-bottom:1px solid #ddd;
-cursor:grab;
-}
-
-.searchBox{
-margin-bottom:10px;
-}
-
 </style>
 </head>
 
-
 <body>
 
-<div>
+<div class="wrapper">
 
-<input id="search" class="searchBox" placeholder="スキル検索">
+<div class="title">Order Composer - Match</div>
 
-<div id="tabs"></div>
+<div class="main">
 
-<div id="skillList"></div>
+<div class="panel left">
+
+<div class="controls">
+<button onclick="addWait(5)">+5秒</button>
+<button onclick="addWait(10)">+10秒</button>
+
+<input type="number" id="waitInput" style="width:70px;">
+<button onclick="addCustomWait()">追加</button>
+
+<button onclick="resetAll()">リセット</button>
+
+<button onclick="shareOrders()">共有URLコピー</button>
+</div>
+
+<div id="selected" class="scroll"></div>
+
+<div class="total" id="totalTime">
+残り時間 15分0秒 ／ 発動 0分0秒<br>合計: 0秒
+</div>
 
 </div>
 
+<div class="panel right">
 
-<div>
+<div style="margin-bottom:6px;">
+<input type="text" id="searchBox" placeholder="スキル検索">
+</div>
 
-<h3>選択スキル</h3>
+<div id="typeFilters" style="margin-bottom:8px;">
+<label><input type="checkbox" value="属性" checked>属性</label>
+<label><input type="checkbox" value="バフデバフ" checked>バフデバフ</label>
+<label><input type="checkbox" value="発動率" checked>発動率</label>
+<label><input type="checkbox" value="MP" checked>MP</label>
+<label><input type="checkbox" value="盾" checked>盾</label>
+<label><input type="checkbox" value="その他" checked>その他</label>
+</div>
 
-<div id="selected"></div>
+<div id="list" class="scroll"></div>
 
 </div>
 
+</div>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
 
-const skills=[
+const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
-{name:"火属性攻撃",type:"属性"},
-{name:"水属性攻撃",type:"属性"},
-{name:"風属性攻撃",type:"属性"},
-{name:"バフ強化",type:"バフデバフ"},
-{name:"デバフ弱体",type:"バフデバフ"},
-{name:"発動率UP",type:"発動率"},
-{name:"MP回復",type:"MP"},
-{name:"MP消費軽減",type:"MP"},
-{name:"盾防御",type:"盾"},
-{name:"反射盾",type:"盾"},
-{name:"特殊効果",type:"その他"}
+let originalData=[];
+let restoreData=null;
+let dragItem=null;
 
-]
-
-const types=[
-"全部",
-"属性",
-"バフデバフ",
-"発動率",
-"MP",
-"盾",
-"その他"
-]
-
-let currentType="全部"
-
-function renderTabs(){
-
-const tabs=document.getElementById("tabs")
-tabs.innerHTML=""
-
-types.forEach(t=>{
-
-const tab=document.createElement("span")
-tab.className="tab"
-if(t===currentType)tab.classList.add("active")
-
-tab.textContent=t
-
-tab.onclick=()=>{
-currentType=t
-renderTabs()
-renderSkills()
+function formatTime(sec){
+const sign=sec<0?"-":"";
+sec=Math.abs(sec);
+const m=Math.floor(sec/60);
+const s=sec%60;
+return sign+m+"分"+s+"秒";
 }
 
-tabs.appendChild(tab)
+function loadCsv(){
+Papa.parse(csvURL,{
+download:true,
+header:true,
+complete:function(res){
 
-})
+originalData=res.data
+.filter(r=>r.effect && r.id)
+.map(r=>({
+...r,
+idx:String(r.id).trim()
+}));
 
-}
+applyFilter();
 
-function renderSkills(){
-
-const list=document.getElementById("skillList")
-list.innerHTML=""
-
-const search=document.getElementById("search").value
-
-skills
-.filter(s=>{
-
-if(currentType!=="全部" && s.type!==currentType)return false
-
-if(search && !s.name.includes(search))return false
-
-return true
-
-})
-.forEach(skill=>{
-
-const div=document.createElement("div")
-
-div.className="skill"
-
-div.textContent=skill.name+" ["+skill.type+"]"
-
-div.onclick=(e)=>addSkill(skill,e.shiftKey)
-
-list.appendChild(div)
-
-})
-
-}
-
-function addSkill(skill,toTop){
-
-const box=document.getElementById("selected")
-
-const div=document.createElement("div")
-div.className="selectedItem"
-div.textContent=skill.name
-
-if(toTop)
-box.prepend(div)
-else
-box.appendChild(div)
-
-enableDrag(div)
-
-}
-
-function enableDrag(el){
-
-el.draggable=true
-
-el.ondragstart=e=>{
-dragged=el
-}
-
-el.ondragover=e=>{
-e.preventDefault()
-}
-
-el.ondrop=e=>{
-e.preventDefault()
-if(dragged!==el){
-
-const parent=el.parentNode
-
-parent.insertBefore(dragged,el)
-
+if(restoreData){
+restoreFromData();
 }
 
 }
+});
+}
+
+function sortData(data){
+return [...data].sort((a,b)=>
+(Number(a.prep_time)+Number(a.start_time))-
+(Number(b.prep_time)+Number(b.start_time))
+);
+}
+
+function applyFilter(){
+
+const checks=[
+...document.querySelectorAll("#typeFilters input:checked")
+].map(c=>c.value);
+
+const word=document.getElementById("searchBox").value.toLowerCase();
+
+let data=originalData;
+
+data=data.filter(row=>checks.includes(row.type));
+
+if(word){
+
+data=data.filter(row=>
+(row.effect||"").toLowerCase().includes(word) ||
+(row.name1||"").toLowerCase().includes(word) ||
+(row.name2||"").toLowerCase().includes(word)
+);
 
 }
 
-let dragged=null
+renderList(sortData(data));
 
-document.getElementById("search").oninput=renderSkills
+}
 
-renderTabs()
-renderSkills()
+function renderList(data){
+
+const list=document.getElementById("list");
+
+const selectedIdxs=[...document.querySelectorAll("#selected .order")]
+.map(div=>div.dataset.idx);
+
+list.innerHTML="";
+
+data.forEach(row=>{
+
+const el=createOrder(row,false);
+
+if(selectedIdxs.includes(String(row.idx))){
+el.classList.add("disabled");
+el.onclick=()=>highlightSelected(row.idx);
+}else{
+el.onclick=()=>addSelected(row);
+}
+
+list.appendChild(el);
+
+});
+
+}
+
+function createOrder(row,isSelected){
+
+const div=document.createElement("div");
+
+div.className="order";
+div.dataset.idx=row.idx;
+div.dataset.prep=row.prep_time||0;
+div.dataset.start=row.start_time||0;
+div.dataset.effect=row.effect;
+
+if(row.effect==="待つ"){
+div.classList.add("wait");
+}
+
+if(isSelected){
+
+div.draggable=true;
+
+div.addEventListener("dragstart",()=>{
+dragItem=div;
+div.classList.add("dragging");
+});
+
+div.addEventListener("dragend",()=>{
+div.classList.remove("dragging");
+updateTimes();
+});
+
+div.addEventListener("dragover",(e)=>{
+e.preventDefault();
+});
+
+div.addEventListener("drop",(e)=>{
+e.preventDefault();
+if(dragItem && dragItem!==div){
+
+const parent=div.parentNode;
+
+const rect=div.getBoundingClientRect();
+
+const offset=e.clientY-rect.top;
+
+if(offset>rect.height/2){
+parent.insertBefore(dragItem,div.nextSibling);
+}else{
+parent.insertBefore(dragItem,div);
+}
+
+updateTimes();
+
+}
+});
+
+const time=document.createElement("div");
+time.className="timebox";
+div.appendChild(time);
+
+}
+
+const img=document.createElement("img");
+img.src=row.image_url||"";
+div.appendChild(img);
+
+const info=document.createElement("div");
+info.className="info";
+
+info.innerHTML=
+row.effect+"<br>"+
+row.prep_time+"+"+row.start_time+"秒<br>"+
+(row.name1||"")+
+(row.name2?("<br>"+row.name2):"");
+
+if(isSelected){
+
+const memo=document.createElement("input");
+memo.type="text";
+memo.className="memo";
+memo.placeholder="メモ";
+memo.oninput=updateTimes;
+info.appendChild(memo);
+
+div.ondblclick=()=>{
+div.remove();
+updateTimes();
+applyFilter();
+};
+
+}
+
+div.appendChild(info);
+
+return div;
+
+}
+
+function addSelected(row){
+
+const sel=document.getElementById("selected");
+
+if([...sel.querySelectorAll(".order")]
+.some(d=>d.dataset.idx===String(row.idx))){
+highlightSelected(row.idx);
+return;
+}
+
+const el=createOrder(row,true);
+
+sel.appendChild(el);
+
+updateTimes();
+
+applyFilter();
+
+}
+
+function highlightSelected(idx){
+
+const target=[...document.querySelectorAll("#selected .order")]
+.find(d=>d.dataset.idx===String(idx));
+
+if(target){
+
+target.classList.add("highlight");
+
+setTimeout(()=>target.classList.remove("highlight"),600);
+
+}
+
+}
+
+function updateTimes(){
+
+const items=document.querySelectorAll("#selected .order");
+
+let base=900;
+
+let total=0;
+
+items.forEach(div=>{
+
+const prep=Number(div.dataset.prep);
+const start=Number(div.dataset.start);
+
+const activatedTime=base-prep;
+const nextBase=activatedTime-start;
+
+total+=prep+start;
+
+const box=div.querySelector(".timebox");
+
+if(box){
+
+box.innerHTML=
+"残り "+formatTime(base)+"<br>"+
+"発動 "+formatTime(activatedTime)+"<br>"+
+"効果終了 "+formatTime(nextBase);
+
+}
+
+base=nextBase;
+
+});
+
+document.getElementById("totalTime").innerHTML=
+"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
+"<br>合計: "+total+"秒";
+
+}
+
+function addWait(sec){
+
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:sec,
+name1:"",
+name2:"",
+image_url:"",
+idx:"wait_"+Date.now()
+});
+
+}
+
+function addCustomWait(){
+
+const sec=Number(document.getElementById("waitInput").value);
+
+if(sec>0) addWait(sec);
+
+document.getElementById("waitInput").value="";
+
+}
+
+function resetAll(){
+
+document.getElementById("selected").innerHTML="";
+
+updateTimes();
+
+applyFilter();
+
+}
+
+function shareOrders(){
+
+const items=[...document.querySelectorAll("#selected .order")];
+
+const data=items.map(div=>({
+
+idx:div.dataset.idx,
+prep:div.dataset.prep,
+start:div.dataset.start,
+memo:div.querySelector(".memo")?
+div.querySelector(".memo").value:""
+
+}));
+
+const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
+
+const url=location.origin+location.pathname+"?share="+encoded;
+
+navigator.clipboard.writeText(url);
+
+alert("共有URLをコピーしました");
+
+}
+
+function restoreFromData(){
+
+if(!restoreData) return;
+
+restoreData.forEach(item=>{
+
+if(String(item.idx).startsWith("wait_")){
+
+addSelected({
+effect:"待つ",
+prep_time:Number(item.prep),
+start_time:Number(item.start),
+name1:"",
+name2:"",
+image_url:"",
+idx:item.idx
+});
+
+return;
+
+}
+
+const row=originalData.find(r=>String(r.idx)===String(item.idx));
+
+if(row){
+
+addSelected(row);
+
+const last=[...document.querySelectorAll("#selected .order")].pop();
+
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+
+}
+
+});
+
+restoreData=null;
+
+updateTimes();
+
+}
+
+document.querySelectorAll("#typeFilters input")
+.forEach(cb=>{
+cb.addEventListener("change",applyFilter);
+});
+
+document.getElementById("searchBox")
+.addEventListener("input",applyFilter);
+
+window.addEventListener("load",()=>{
+
+const params=new URLSearchParams(location.search);
+
+const share=params.get("share");
+
+if(share){
+restoreData=JSON.parse(decodeURIComponent(atob(share)));
+}
+
+loadCsv();
+
+updateTimes();
+
+});
 
 </script>
 
 </body>
 </html>
+```
