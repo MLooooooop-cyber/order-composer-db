@@ -85,6 +85,12 @@ margin-right:4px;
 margin-top:6px;
 font-weight:bold;
 }
+
+#typeFilters label{
+margin-right:10px;
+font-size:12px;
+cursor:pointer;
+}
 </style>
 </head>
 
@@ -119,6 +125,17 @@ font-weight:bold;
 </div>
 
 <div class="panel right">
+
+<div id="typeFilters" style="margin-bottom:8px;">
+
+<label><input type="checkbox" value="属性" checked>属性</label>
+<label><input type="checkbox" value="バフデバフ" checked>バフデバフ</label>
+<label><input type="checkbox" value="発動率" checked>発動率</label>
+<label><input type="checkbox" value="MP" checked>MP</label>
+<label><input type="checkbox" value="盾" checked>盾</label>
+<label><input type="checkbox" value="その他" checked>その他</label>
+
+</div>
 
 <div id="list" class="scroll"></div>
 
@@ -158,7 +175,7 @@ originalData=res.data
 idx:String(r.id).trim()
 }));
 
-renderList(sortData(originalData));
+applyFilter();
 
 if(restoreData){
 restoreFromData();
@@ -173,6 +190,20 @@ return [...data].sort((a,b)=>
 (Number(a.prep_time)+Number(a.start_time))-
 (Number(b.prep_time)+Number(b.start_time))
 );
+}
+
+function applyFilter(){
+
+const checks=[
+...document.querySelectorAll("#typeFilters input:checked")
+].map(c=>c.value);
+
+const filtered=originalData.filter(row=>
+checks.includes(row.type)
+);
+
+renderList(sortData(filtered));
+
 }
 
 function renderList(data){
@@ -285,7 +316,7 @@ info.appendChild(memo);
 div.ondblclick=()=>{
 div.remove();
 updateTimes();
-renderList(sortData(originalData));
+applyFilter();
 };
 
 }
@@ -312,7 +343,7 @@ sel.appendChild(el);
 
 updateTimes();
 
-renderList(sortData(originalData));
+applyFilter();
 
 }
 
@@ -400,7 +431,7 @@ document.getElementById("selected").innerHTML="";
 
 updateTimes();
 
-renderList(sortData(originalData));
+applyFilter();
 
 }
 
@@ -471,6 +502,11 @@ restoreData=null;
 updateTimes();
 
 }
+
+document.querySelectorAll("#typeFilters input")
+.forEach(cb=>{
+cb.addEventListener("change",applyFilter);
+});
 
 window.addEventListener("load",()=>{
 
