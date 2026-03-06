@@ -23,6 +23,7 @@ border:1px solid #e0e0e0;
 margin-bottom:4px;
 padding:4px;
 background:#fafafa;
+background-clip:padding-box;
 cursor:pointer;
 }
 
@@ -31,7 +32,6 @@ cursor:pointer;
 .order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
 
 .order.dragging{opacity:0.4;}
-
 .order.highlight{animation:flash 0.6s ease;}
 
 @keyframes flash{
@@ -248,38 +248,6 @@ list.appendChild(el);
 
 }
 
-function applyElementColor(div,row){
-
-const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
-
-const fire=text.includes("火");
-const water=text.includes("水");
-const wind=text.includes("風");
-
-if(fire && !water && !wind){
-div.style.background="#ffe5e5";
-}
-else if(water && !fire && !wind){
-div.style.background="#e5f0ff";
-}
-else if(wind && !fire && !water){
-div.style.background="#e6ffe5";
-}
-else if(fire && water && !wind){
-div.style.background="linear-gradient(135deg,#ffe5e5 50%,#e5f0ff 50%)";
-}
-else if(fire && wind && !water){
-div.style.background="linear-gradient(135deg,#ffe5e5 50%,#e6ffe5 50%)";
-}
-else if(water && wind && !fire){
-div.style.background="linear-gradient(135deg,#e5f0ff 50%,#e6ffe5 50%)";
-}
-else if(fire && water && wind){
-div.style.background="linear-gradient(135deg,#ffe5e5 33%,#e5f0ff 33%,#e5f0ff 66%,#e6ffe5 66%)";
-}
-
-}
-
 function createOrder(row,isSelected){
 
 const div=document.createElement("div");
@@ -290,7 +258,33 @@ div.dataset.prep=row.prep_time||0;
 div.dataset.start=row.start_time||0;
 div.dataset.effect=row.effect;
 
-applyElementColor(div,row);
+const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
+
+const hasFire=text.includes("火");
+const hasWater=text.includes("水");
+const hasWind=text.includes("風");
+
+if(hasFire && !hasWater && !hasWind){
+div.style.background="#fff2f2";
+}
+else if(hasWater && !hasFire && !hasWind){
+div.style.background="#f2f6ff";
+}
+else if(hasWind && !hasFire && !hasWater){
+div.style.background="#f2fff2";
+}
+else if(hasFire && hasWater && !hasWind){
+div.style.background="linear-gradient(45deg,#fff2f2 50%,#f2f6ff 50%)";
+}
+else if(hasFire && hasWind && !hasWater){
+div.style.background="linear-gradient(45deg,#fff2f2 50%,#f2fff2 50%)";
+}
+else if(hasWater && hasWind && !hasFire){
+div.style.background="linear-gradient(45deg,#f2f6ff 50%,#f2fff2 50%)";
+}
+else if(hasFire && hasWater && hasWind){
+div.style.background="linear-gradient(45deg,#fff2f2 33%,#f2f6ff 33%,#f2f6ff 66%,#f2fff2 66%)";
+}
 
 if(row.effect==="待つ"){
 div.classList.add("wait");
