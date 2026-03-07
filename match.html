@@ -22,7 +22,7 @@ align-items:flex-start;
 border:1px solid #e0e0e0;
 margin-bottom:4px;
 padding:4px;
-background:#ffffff;
+background:#fafafa;
 cursor:pointer;
 position:relative;
 overflow:hidden;
@@ -30,7 +30,9 @@ overflow:hidden;
 
 .order.wait{background:#e8e8e8;}
 .order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
+
 .order.dragging{opacity:0.4;}
+
 .order.highlight{animation:flash 0.6s ease;}
 
 @keyframes flash{
@@ -93,9 +95,26 @@ padding:3px;
 font-size:12px;
 }
 
-/* ===== 三角レイヤー ===== */
+/* ===== 属性ベース ===== */
 
-.order::before{
+.attr-fire,
+.attr-water,
+.attr-wind,
+.attr-fire-water,
+.attr-fire-wind,
+.attr-water-wind{
+background:#ffffff;
+position:relative;
+}
+
+/* ===== 左上三角 ===== */
+
+.attr-fire::before,
+.attr-water::before,
+.attr-wind::before,
+.attr-fire-water::before,
+.attr-fire-wind::before,
+.attr-water-wind::before{
 content:"";
 position:absolute;
 top:0;
@@ -106,7 +125,11 @@ clip-path:polygon(0 0,100% 0,0 100%);
 z-index:0;
 }
 
-.order::after{
+/* ===== 右下三角（2属性のみ） ===== */
+
+.attr-fire-water::after,
+.attr-fire-wind::after,
+.attr-water-wind::after{
 content:"";
 position:absolute;
 bottom:0;
@@ -117,23 +140,55 @@ clip-path:polygon(100% 0,100% 100%,0 100%);
 z-index:0;
 }
 
-/* ===== TOPカラー ===== */
+/* ===== 火 ===== */
 
-.attr-top-fire::before{background:#fff2f2;}
-.attr-top-water::before{background:#f2f6ff;}
-.attr-top-wind::before{background:#f2fff2;}
-.attr-top-light::before{background:#fff9cc;}
-.attr-top-dark::before{background:#f4e6ff;}
+.attr-fire::before{
+background:#fff2f2;
+}
 
-/* ===== BOTTOMカラー ===== */
+/* ===== 水 ===== */
 
-.attr-bottom-fire::after{background:#fff2f2;}
-.attr-bottom-water::after{background:#f2f6ff;}
-.attr-bottom-wind::after{background:#f2fff2;}
-.attr-bottom-light::after{background:#fff9cc;}
-.attr-bottom-dark::after{background:#f4e6ff;}
+.attr-water::before{
+background:#f2f6ff;
+}
 
-/* ===== 文字前面 ===== */
+/* ===== 風 ===== */
+
+.attr-wind::before{
+background:#f2fff2;
+}
+
+/* ===== 火＋水 ===== */
+
+.attr-fire-water::before{
+background:#fff2f2;
+}
+
+.attr-fire-water::after{
+background:#f2f6ff;
+}
+
+/* ===== 火＋風 ===== */
+
+.attr-fire-wind::before{
+background:#fff2f2;
+}
+
+.attr-fire-wind::after{
+background:#f2fff2;
+}
+
+/* ===== 水＋風 ===== */
+
+.attr-water-wind::before{
+background:#f2f6ff;
+}
+
+.attr-water-wind::after{
+background:#f2fff2;
+}
+
+/* ===== 文字を前面 ===== */
 
 .order img,
 .info,
@@ -148,6 +203,7 @@ z-index:1;
 <body>
 
 <div class="wrapper">
+
 <div class="title">Order Composer - Match</div>
 
 <div class="main">
@@ -162,6 +218,7 @@ z-index:1;
 <button onclick="addCustomWait()">追加</button>
 
 <button onclick="resetAll()">リセット</button>
+
 <button onclick="shareOrders()">共有URLコピー</button>
 </div>
 
@@ -191,12 +248,14 @@ z-index:1;
 <div id="list" class="scroll"></div>
 
 </div>
+
 </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
+/* ここから下はあなたの元コードそのまま */
 
 const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
@@ -212,59 +271,403 @@ const s=sec%60;
 return sign+m+"分"+s+"秒";
 }
 
-function getAttributes(text){
+function loadCsv(){
+Papa.parse(csvURL,{
+download:true,
+header:true,
+complete:function(res){
 
-const attrs=[];
+originalData=res.data
+.filter(r=>r.effect && r.id)
+.map(r=>({
+...r,
+idx:String(r.id).trim()
+}));
 
-if(text.includes("光")) attrs.push("light");
-if(text.includes("闇")) attrs.push("dark");
-if(text.includes("火")) attrs.push("fire");
-if(text.includes("水")) attrs.push("water");
-if(text.includes("風")) attrs.push("wind");
+applyFilter();
 
-return attrs;
-
-}
-
-function applyAttrClass(div,text){
-
-const attrs=getAttributes(text);
-
-if(attrs.length===0) return;
-
-let top=attrs[0];
-let bottom=null;
-
-/* 優先ルール */
-
-if(attrs.includes("light") && attrs.includes("dark")){
-top="light";
-bottom="dark";
-}
-
-else if(attrs.includes("light")){
-top="light";
-bottom=attrs.find(a=>a!=="light");
-}
-
-else if(attrs.includes("dark")){
-top="dark";
-bottom=attrs.find(a=>a!=="dark");
-}
-
-else if(attrs.length>=2){
-top=attrs[0];
-bottom=attrs[1];
-}
-
-div.classList.add("attr-top-"+top);
-
-if(bottom){
-div.classList.add("attr-bottom-"+bottom);
+if(restoreData){
+restoreFromData();
 }
 
 }
+});
+}
+
+function sortData(data){
+return [...data].sort((a,b)=>
+(Number(a.prep_time)+Number(a.start_time))-
+(Number(b.prep_time)+Number(b.start_time))
+);
+}
+
+function applyFilter(){
+
+const checks=[
+...document.querySelectorAll("#typeFilters input:checked")
+].map(c=>c.value);
+
+const word=document.getElementById("searchBox").value.toLowerCase();
+
+let data=originalData;
+
+data=data.filter(row=>checks.includes(row.type));
+
+if(word){
+
+data=data.filter(row=>
+(row.effect||"").toLowerCase().includes(word) ||
+(row.name1||"").toLowerCase().includes(word) ||
+(row.name2||"").toLowerCase().includes(word)
+);
+
+}
+
+renderList(sortData(data));
+
+}
+
+function renderList(data){
+
+const list=document.getElementById("list");
+
+const selectedIdxs=[...document.querySelectorAll("#selected .order")]
+.map(div=>div.dataset.idx);
+
+list.innerHTML="";
+
+data.forEach(row=>{
+
+const el=createOrder(row,false);
+
+if(selectedIdxs.includes(String(row.idx))){
+el.classList.add("disabled");
+el.onclick=()=>highlightSelected(row.idx);
+}else{
+el.onclick=()=>addSelected(row);
+}
+
+list.appendChild(el);
+
+});
+
+}
+
+function createOrder(row,isSelected){
+
+const div=document.createElement("div");
+
+div.className="order";
+div.dataset.idx=row.idx;
+div.dataset.prep=row.prep_time||0;
+div.dataset.start=row.start_time||0;
+div.dataset.effect=row.effect;
+
+const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
+
+const fire=text.includes("火");
+const water=text.includes("水");
+const wind=text.includes("風");
+
+if(fire && water){
+div.classList.add("attr-fire-water");
+}else if(fire && wind){
+div.classList.add("attr-fire-wind");
+}else if(water && wind){
+div.classList.add("attr-water-wind");
+}else if(fire){
+div.classList.add("attr-fire");
+}else if(water){
+div.classList.add("attr-water");
+}else if(wind){
+div.classList.add("attr-wind");
+}
+
+if(row.effect==="待つ"){
+div.classList.add("wait");
+}
+
+if(isSelected){
+
+div.draggable=true;
+
+div.addEventListener("dragstart",()=>{
+dragItem=div;
+div.classList.add("dragging");
+});
+
+div.addEventListener("dragend",()=>{
+div.classList.remove("dragging");
+updateTimes();
+});
+
+div.addEventListener("dragover",(e)=>{
+e.preventDefault();
+});
+
+div.addEventListener("drop",(e)=>{
+e.preventDefault();
+if(dragItem && dragItem!==div){
+
+const parent=div.parentNode;
+
+const rect=div.getBoundingClientRect();
+const offset=e.clientY-rect.top;
+
+if(offset>rect.height/2){
+parent.insertBefore(dragItem,div.nextSibling);
+}else{
+parent.insertBefore(dragItem,div);
+}
+
+updateTimes();
+
+}
+});
+
+const time=document.createElement("div");
+time.className="timebox";
+div.appendChild(time);
+
+}
+
+const img=document.createElement("img");
+img.src=row.image_url||"";
+div.appendChild(img);
+
+const info=document.createElement("div");
+info.className="info";
+
+info.innerHTML=
+row.effect+"<br>"+
+row.prep_time+"+"+row.start_time+"秒<br>"+
+(row.name1||"")+
+(row.name2?("<br>"+row.name2):"");
+
+if(isSelected){
+
+const memo=document.createElement("input");
+memo.type="text";
+memo.className="memo";
+memo.placeholder="メモ";
+memo.oninput=updateTimes;
+info.appendChild(memo);
+
+div.ondblclick=()=>{
+div.remove();
+updateTimes();
+applyFilter();
+};
+
+}
+
+div.appendChild(info);
+
+return div;
+
+}
+
+function addSelected(row){
+
+const sel=document.getElementById("selected");
+
+if([...sel.querySelectorAll(".order")]
+.some(d=>d.dataset.idx===String(row.idx))){
+highlightSelected(row.idx);
+return;
+}
+
+const el=createOrder(row,true);
+
+sel.appendChild(el);
+
+updateTimes();
+
+applyFilter();
+
+}
+
+function highlightSelected(idx){
+
+const target=[...document.querySelectorAll("#selected .order")]
+.find(d=>d.dataset.idx===String(idx));
+
+if(target){
+
+target.classList.add("highlight");
+
+setTimeout(()=>target.classList.remove("highlight"),600);
+
+}
+
+}
+
+function updateTimes(){
+
+const items=document.querySelectorAll("#selected .order");
+
+let base=900;
+
+let total=0;
+
+items.forEach(div=>{
+
+const prep=Number(div.dataset.prep);
+const start=Number(div.dataset.start);
+
+const activatedTime=base-prep;
+const nextBase=activatedTime-start;
+
+total+=prep+start;
+
+const box=div.querySelector(".timebox");
+
+if(box){
+
+box.innerHTML=
+"残り "+formatTime(base)+"<br>"+
+"発動 "+formatTime(activatedTime)+"<br>"+
+"効果終了 "+formatTime(nextBase);
+
+}
+
+base=nextBase;
+
+});
+
+document.getElementById("totalTime").innerHTML=
+"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
+"<br>合計: "+total+"秒";
+
+}
+
+function addWait(sec){
+
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:sec,
+name1:"",
+name2:"",
+image_url:"",
+idx:"wait_"+Date.now()
+});
+
+}
+
+function addCustomWait(){
+
+const sec=Number(document.getElementById("waitInput").value);
+
+if(sec>0) addWait(sec);
+
+document.getElementById("waitInput").value="";
+
+}
+
+function resetAll(){
+
+document.getElementById("selected").innerHTML="";
+
+updateTimes();
+
+applyFilter();
+
+}
+
+function shareOrders(){
+
+const items=[...document.querySelectorAll("#selected .order")];
+
+const data=items.map(div=>({
+
+idx:div.dataset.idx,
+prep:div.dataset.prep,
+start:div.dataset.start,
+memo:div.querySelector(".memo")?
+div.querySelector(".memo").value:""
+
+}));
+
+const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
+
+const url=location.origin+location.pathname+"?share="+encoded;
+
+navigator.clipboard.writeText(url);
+
+alert("共有URLをコピーしました");
+
+}
+
+function restoreFromData(){
+
+if(!restoreData) return;
+
+restoreData.forEach(item=>{
+
+if(String(item.idx).startsWith("wait_")){
+
+addSelected({
+effect:"待つ",
+prep_time:Number(item.prep),
+start_time:Number(item.start),
+name1:"",
+name2:"",
+image_url:"",
+idx:item.idx
+});
+
+return;
+
+}
+
+const row=originalData.find(r=>String(r.idx)===String(item.idx));
+
+if(row){
+
+addSelected(row);
+
+const last=[...document.querySelectorAll("#selected .order")].pop();
+
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+
+}
+
+});
+
+restoreData=null;
+
+updateTimes();
+
+}
+
+document.querySelectorAll("#typeFilters input")
+.forEach(cb=>{
+cb.addEventListener("change",applyFilter);
+});
+
+document.getElementById("searchBox")
+.addEventListener("input",applyFilter);
+
+window.addEventListener("load",()=>{
+
+const params=new URLSearchParams(location.search);
+
+const share=params.get("share");
+
+if(share){
+restoreData=JSON.parse(decodeURIComponent(atob(share)));
+}
+
+loadCsv();
+
+updateTimes();
+
+});
 
 </script>
+
 </body>
 </html>
