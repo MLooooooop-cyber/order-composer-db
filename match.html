@@ -2,275 +2,692 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Match Tool</title>
+<title>Order Composer - Match</title>
 
 <style>
+body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
 
-body{
-font-family:sans-serif;
-margin:20px;
-}
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
 
-.container{
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
+
+.order{
 display:flex;
-gap:20px;
-}
-
-.left{
-width:250px;
-border:1px solid #ccc;
-padding:10px;
-}
-
-.right{
-flex:1;
-}
-
-.item{
-padding:6px;
-border:1px solid #ccc;
+align-items:flex-start;
+border:1px solid #e0e0e0;
 margin-bottom:4px;
-cursor:move;
+padding:4px;
 background:#fafafa;
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,120px);
-gap:6px;
-}
-
-.cell{
-border:1px solid #aaa;
-height:60px;
-display:flex;
-align-items:center;
-justify-content:center;
+cursor:pointer;
 position:relative;
 overflow:hidden;
 }
 
-/* =========================
-   属性システム完全版
-========================= */
+.order.wait{background:#e8e8e8;}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
 
-.attr-cell{
+.order.dragging{opacity:0.4;}
+
+.order.highlight{animation:flash 0.6s ease;}
+
+@keyframes flash{
+0%{background:#ffe082;}
+100%{background:#fafafa;}
+}
+
+.order img{
+width:36px;
+height:36px;
+object-fit:contain;
+margin-right:6px;
+}
+
+.info{
+flex:1;
+line-height:1.3;
+word-break:break-all;
+display:flex;
+flex-direction:column;
+}
+
+.memo{
+width:100%;
+margin-top:4px;
+font-size:12px;
+box-sizing:border-box;
+}
+
+.timebox{
+width:170px;
+text-align:right;
+font-weight:bold;
+margin-right:6px;
+line-height:1.4;
+}
+
+.controls{margin-bottom:8px;}
+
+button{
+font-size:12px;
+padding:2px 6px;
+margin-right:4px;
+}
+
+.total{
+margin-top:6px;
+font-weight:bold;
+}
+
+#typeFilters label{
+margin-right:10px;
+font-size:12px;
+cursor:pointer;
+}
+
+#searchBox{
+width:200px;
+padding:3px;
+font-size:12px;
+}
+
+/* ===== 属性ベース ===== */
+
+.attr-fire,
+.attr-water,
+.attr-wind,
+.attr-light,
+.attr-dark,
+.attr-fire-water,
+.attr-fire-wind,
+.attr-water-wind,
+.attr-light-fire,
+.attr-light-water,
+.attr-light-wind,
+.attr-dark-fire,
+.attr-dark-water,
+.attr-dark-wind,
+.attr-light-dark{
+background:#ffffff;
 position:relative;
 }
 
-.attr-cell::before{
+/* ===== 左上三角 ===== */
+
+.attr-fire::before,
+.attr-water::before,
+.attr-wind::before,
+.attr-light::before,
+.attr-dark::before,
+.attr-fire-water::before,
+.attr-fire-wind::before,
+.attr-water-wind::before,
+.attr-light-fire::before,
+.attr-light-water::before,
+.attr-light-wind::before,
+.attr-dark-fire::before,
+.attr-dark-water::before,
+.attr-dark-wind::before,
+.attr-light-dark::before{
 content:"";
 position:absolute;
-inset:0;
+top:0;
+left:0;
+width:45%;
+height:45%;
 clip-path:polygon(0 0,100% 0,0 100%);
 z-index:0;
 }
 
-.attr-cell::after{
+/* ===== 右下三角 ===== */
+
+.attr-fire-water::after,
+.attr-fire-wind::after,
+.attr-water-wind::after,
+.attr-light-fire::after,
+.attr-light-water::after,
+.attr-light-wind::after,
+.attr-dark-fire::after,
+.attr-dark-water::after,
+.attr-dark-wind::after,
+.attr-light-dark::after{
 content:"";
 position:absolute;
-inset:0;
+bottom:0;
+right:0;
+width:45%;
+height:45%;
 clip-path:polygon(100% 0,100% 100%,0 100%);
 z-index:0;
 }
 
-.attr-cell span{
+/* ===== 火 ===== */
+.attr-fire::before{background:#fff2f2;}
+
+/* ===== 水 ===== */
+.attr-water::before{background:#f2f6ff;}
+
+/* ===== 風 ===== */
+.attr-wind::before{background:#f2fff2;}
+
+/* ===== 光 ===== */
+.attr-light::before{background:#fff9cc;}
+
+/* ===== 闇 ===== */
+.attr-dark::before{background:#f4e6ff;}
+
+/* ===== 火＋水 ===== */
+.attr-fire-water::before{background:#fff2f2;}
+.attr-fire-water::after{background:#f2f6ff;}
+
+/* ===== 火＋風 ===== */
+.attr-fire-wind::before{background:#fff2f2;}
+.attr-fire-wind::after{background:#f2fff2;}
+
+/* ===== 水＋風 ===== */
+.attr-water-wind::before{background:#f2f6ff;}
+.attr-water-wind::after{background:#f2fff2;}
+
+/* ===== 光＋火 ===== */
+.attr-light-fire::before{background:#fff9cc;}
+.attr-light-fire::after{background:#fff2f2;}
+
+/* ===== 光＋水 ===== */
+.attr-light-water::before{background:#fff9cc;}
+.attr-light-water::after{background:#f2f6ff;}
+
+/* ===== 光＋風 ===== */
+.attr-light-wind::before{background:#fff9cc;}
+.attr-light-wind::after{background:#f2fff2;}
+
+/* ===== 闇＋火 ===== */
+.attr-dark-fire::before{background:#f4e6ff;}
+.attr-dark-fire::after{background:#fff2f2;}
+
+/* ===== 闇＋水 ===== */
+.attr-dark-water::before{background:#f4e6ff;}
+.attr-dark-water::after{background:#f2f6ff;}
+
+/* ===== 闇＋風 ===== */
+.attr-dark-wind::before{background:#f4e6ff;}
+.attr-dark-wind::after{background:#f2fff2;}
+
+/* ===== 光＋闇 ===== */
+.attr-light-dark::before{background:#fff9cc;}
+.attr-light-dark::after{background:#f4e6ff;}
+
+.order img,
+.info,
+.timebox{
 position:relative;
 z-index:1;
 }
-
-/* top */
-
-.attr-top-fire::before{background:#ffe6e6;}
-.attr-top-water::before{background:#e6f0ff;}
-.attr-top-wind::before{background:#eaffea;}
-.attr-top-light::before{background:#fff6cc;}
-.attr-top-dark::before{background:#f2e6ff;}
-
-/* bottom */
-
-.attr-bottom-fire::after{background:#ffe6e6;}
-.attr-bottom-water::after{background:#e6f0ff;}
-.attr-bottom-wind::after{background:#eaffea;}
-.attr-bottom-light::after{background:#fff6cc;}
-.attr-bottom-dark::after{background:#f2e6ff;}
-
 </style>
 </head>
 
 <body>
 
-<h2>Match Tool</h2>
+<div class="wrapper">
 
-<div class="container">
+<div class="title">Order Composer - Match</div>
 
-<div class="left" id="leftList"></div>
+<div class="main">
 
-<div class="right">
-<button onclick="generate()">Match</button>
-<div id="result" class="grid"></div>
+<div class="panel left">
+
+<div class="controls">
+<button onclick="addWait(5)">+5秒</button>
+<button onclick="addWait(10)">+10秒</button>
+
+<input type="number" id="waitInput" style="width:70px;">
+<button onclick="addCustomWait()">追加</button>
+
+<button onclick="resetAll()">リセット</button>
+
+<button onclick="shareOrders()">共有URLコピー</button>
+</div>
+
+<div id="selected" class="scroll"></div>
+
+<div class="total" id="totalTime">
+残り時間 15分0秒 ／ 発動 0分0秒<br>合計: 0秒
 </div>
 
 </div>
+
+<div class="panel right">
+
+<div style="margin-bottom:6px;">
+<input type="text" id="searchBox" placeholder="スキル検索">
+</div>
+
+<div id="typeFilters" style="margin-bottom:8px;">
+<label><input type="checkbox" value="属性" checked>属性</label>
+<label><input type="checkbox" value="バフデバフ" checked>バフデバフ</label>
+<label><input type="checkbox" value="発動率" checked>発動率</label>
+<label><input type="checkbox" value="MP" checked>MP</label>
+<label><input type="checkbox" value="盾" checked>盾</label>
+<label><input type="checkbox" value="その他" checked>その他</label>
+</div>
+
+<div id="list" class="scroll"></div>
+
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
+/* 元コードそのまま */
 
-/* サンプルデータ */
+const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
-const items=[
-{name:"A",attr:["火"]},
-{name:"B",attr:["水"]},
-{name:"C",attr:["風"]},
-{name:"D",attr:["光"]},
-{name:"E",attr:["闇"]},
-{name:"F",attr:["火","水"]},
-{name:"G",attr:["光","火"]},
-{name:"H",attr:["闇","風"]}
-]
+let originalData=[];
+let restoreData=null;
+let dragItem=null;
 
-const left=document.getElementById("leftList")
-
-items.forEach(item=>{
-const div=document.createElement("div")
-div.className="item"
-div.draggable=true
-div.textContent=item.name
-div.dataset.attr=item.attr.join(",")
-
-div.addEventListener("dragstart",dragStart)
-div.addEventListener("dragover",dragOver)
-div.addEventListener("drop",drop)
-
-left.appendChild(div)
-})
-
-let dragTarget=null
-
-function dragStart(e){
-dragTarget=this
+function formatTime(sec){
+const sign=sec<0?"-":"";
+sec=Math.abs(sec);
+const m=Math.floor(sec/60);
+const s=sec%60;
+return sign+m+"分"+s+"秒";
 }
 
-function dragOver(e){
-e.preventDefault()
-}
+/* 以降あなたのJSと同じ */
 
-function drop(e){
-e.preventDefault()
-if(dragTarget!==this){
-const parent=this.parentNode
-parent.insertBefore(dragTarget,this)
-}
-}
+function loadCsv(){
+Papa.parse(csvURL,{
+download:true,
+header:true,
+complete:function(res){
 
-/* =====================
-   属性判定
-===================== */
+originalData=res.data
+.filter(r=>r.effect && r.id)
+.map(r=>({
+...r,
+idx:String(r.id).trim()
+}));
 
-function applyAttribute(cell,attrs){
+applyFilter();
 
-cell.classList.add("attr-cell")
-
-const hasFire=attrs.includes("火")
-const hasWater=attrs.includes("水")
-const hasWind=attrs.includes("風")
-const hasLight=attrs.includes("光")
-const hasDark=attrs.includes("闇")
-
-let top=null
-let bottom=null
-
-if(hasLight && hasDark){
-top="light"
-bottom="dark"
-}
-
-else if(hasLight){
-
-top="light"
-
-if(hasFire)bottom="fire"
-else if(hasWater)bottom="water"
-else if(hasWind)bottom="wind"
-
-}
-
-else if(hasDark){
-
-top="dark"
-
-if(hasFire)bottom="fire"
-else if(hasWater)bottom="water"
-else if(hasWind)bottom="wind"
-
-}
-
-else{
-
-if(hasFire && hasWater){
-top="fire"
-bottom="water"
-}
-
-else if(hasFire && hasWind){
-top="fire"
-bottom="wind"
-}
-
-else if(hasWater && hasWind){
-top="water"
-bottom="wind"
-}
-
-else if(hasFire){
-top="fire"
-}
-
-else if(hasWater){
-top="water"
-}
-
-else if(hasWind){
-top="wind"
+if(restoreData){
+restoreFromData();
 }
 
 }
+});
+}
 
-if(top)cell.classList.add("attr-top-"+top)
-if(bottom)cell.classList.add("attr-bottom-"+bottom)
+function sortData(data){
+return [...data].sort((a,b)=>
+(Number(a.prep_time)+Number(a.start_time))-
+(Number(b.prep_time)+Number(b.start_time))
+);
+}
+
+function applyFilter(){
+
+const checks=[
+...document.querySelectorAll("#typeFilters input:checked")
+].map(c=>c.value);
+
+const word=document.getElementById("searchBox").value.toLowerCase();
+
+let data=originalData;
+
+data=data.filter(row=>checks.includes(row.type));
+
+if(word){
+
+data=data.filter(row=>
+(row.effect||"").toLowerCase().includes(word) ||
+(row.name1||"").toLowerCase().includes(word) ||
+(row.name2||"").toLowerCase().includes(word)
+);
 
 }
 
-/* =====================
-   match生成
-===================== */
-
-function generate(){
-
-const result=document.getElementById("result")
-result.innerHTML=""
-
-const list=[...document.querySelectorAll(".item")]
-
-list.forEach(el=>{
-
-const cell=document.createElement("div")
-cell.className="cell"
-
-const span=document.createElement("span")
-span.textContent=el.textContent
-
-cell.appendChild(span)
-
-const attrs=el.dataset.attr.split(",")
-
-applyAttribute(cell,attrs)
-
-result.appendChild(cell)
-
-})
+renderList(sortData(data));
 
 }
 
+function renderList(data){
+
+const list=document.getElementById("list");
+
+const selectedIdxs=[...document.querySelectorAll("#selected .order")]
+.map(div=>div.dataset.idx);
+
+list.innerHTML="";
+
+data.forEach(row=>{
+
+const el=createOrder(row,false);
+
+if(selectedIdxs.includes(String(row.idx))){
+el.classList.add("disabled");
+el.onclick=()=>highlightSelected(row.idx);
+}else{
+el.onclick=()=>addSelected(row);
+}
+
+list.appendChild(el);
+
+});
+
+}
+
+function createOrder(row,isSelected){
+
+const div=document.createElement("div");
+
+div.className="order";
+div.dataset.idx=row.idx;
+div.dataset.prep=row.prep_time||0;
+div.dataset.start=row.start_time||0;
+div.dataset.effect=row.effect;
+
+const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
+
+const fire=text.includes("火");
+const water=text.includes("水");
+const wind=text.includes("風");
+const light=text.includes("光");
+const dark=text.includes("闇");
+
+if(light && dark){
+div.classList.add("attr-light-dark");
+}else if(light && fire){
+div.classList.add("attr-light-fire");
+}else if(light && water){
+div.classList.add("attr-light-water");
+}else if(light && wind){
+div.classList.add("attr-light-wind");
+}else if(dark && fire){
+div.classList.add("attr-dark-fire");
+}else if(dark && water){
+div.classList.add("attr-dark-water");
+}else if(dark && wind){
+div.classList.add("attr-dark-wind");
+}else if(fire && water){
+div.classList.add("attr-fire-water");
+}else if(fire && wind){
+div.classList.add("attr-fire-wind");
+}else if(water && wind){
+div.classList.add("attr-water-wind");
+}else if(light){
+div.classList.add("attr-light");
+}else if(dark){
+div.classList.add("attr-dark");
+}else if(fire){
+div.classList.add("attr-fire");
+}else if(water){
+div.classList.add("attr-water");
+}else if(wind){
+div.classList.add("attr-wind");
+}
+
+if(row.effect==="待つ"){
+div.classList.add("wait");
+}
+
+if(isSelected){
+
+div.draggable=true;
+
+div.addEventListener("dragstart",()=>{
+dragItem=div;
+div.classList.add("dragging");
+});
+
+div.addEventListener("dragend",()=>{
+div.classList.remove("dragging");
+updateTimes();
+});
+
+div.addEventListener("dragover",(e)=>{
+e.preventDefault();
+});
+
+div.addEventListener("drop",(e)=>{
+e.preventDefault();
+if(dragItem && dragItem!==div){
+
+const parent=div.parentNode;
+
+const rect=div.getBoundingClientRect();
+const offset=e.clientY-rect.top;
+
+if(offset>rect.height/2){
+parent.insertBefore(dragItem,div.nextSibling);
+}else{
+parent.insertBefore(dragItem,div);
+}
+
+updateTimes();
+
+}
+});
+
+const time=document.createElement("div");
+time.className="timebox";
+div.appendChild(time);
+
+}
+
+const img=document.createElement("img");
+img.src=row.image_url||"";
+div.appendChild(img);
+
+const info=document.createElement("div");
+info.className="info";
+
+info.innerHTML=
+row.effect+"<br>"+
+row.prep_time+"+"+row.start_time+"秒<br>"+
+(row.name1||"")+
+(row.name2?("<br>"+row.name2):"");
+
+if(isSelected){
+
+const memo=document.createElement("input");
+memo.type="text";
+memo.className="memo";
+memo.placeholder="メモ";
+memo.oninput=updateTimes;
+info.appendChild(memo);
+
+div.ondblclick=()=>{
+div.remove();
+updateTimes();
+applyFilter();
+};
+
+}
+
+div.appendChild(info);
+
+return div;
+
+}
+
+/* 以下JS完全同じ */
+
+function addSelected(row){
+const sel=document.getElementById("selected");
+
+if([...sel.querySelectorAll(".order")]
+.some(d=>d.dataset.idx===String(row.idx))){
+highlightSelected(row.idx);
+return;
+}
+
+const el=createOrder(row,true);
+sel.appendChild(el);
+
+updateTimes();
+applyFilter();
+}
+
+function highlightSelected(idx){
+const target=[...document.querySelectorAll("#selected .order")]
+.find(d=>d.dataset.idx===String(idx));
+
+if(target){
+target.classList.add("highlight");
+setTimeout(()=>target.classList.remove("highlight"),600);
+}
+}
+
+function updateTimes(){
+
+const items=document.querySelectorAll("#selected .order");
+
+let base=900;
+let total=0;
+
+items.forEach(div=>{
+
+const prep=Number(div.dataset.prep);
+const start=Number(div.dataset.start);
+
+const activatedTime=base-prep;
+const nextBase=activatedTime-start;
+
+total+=prep+start;
+
+const box=div.querySelector(".timebox");
+
+if(box){
+box.innerHTML=
+"残り "+formatTime(base)+"<br>"+
+"発動 "+formatTime(activatedTime)+"<br>"+
+"効果終了 "+formatTime(nextBase);
+}
+
+base=nextBase;
+
+});
+
+document.getElementById("totalTime").innerHTML=
+"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
+"<br>合計: "+total+"秒";
+}
+
+function addWait(sec){
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:sec,
+name1:"",
+name2:"",
+image_url:"",
+idx:"wait_"+Date.now()
+});
+}
+
+function addCustomWait(){
+const sec=Number(document.getElementById("waitInput").value);
+if(sec>0) addWait(sec);
+document.getElementById("waitInput").value="";
+}
+
+function resetAll(){
+document.getElementById("selected").innerHTML="";
+updateTimes();
+applyFilter();
+}
+
+function shareOrders(){
+
+const items=[...document.querySelectorAll("#selected .order")];
+
+const data=items.map(div=>({
+idx:div.dataset.idx,
+prep:div.dataset.prep,
+start:div.dataset.start,
+memo:div.querySelector(".memo")?
+div.querySelector(".memo").value:""
+}));
+
+const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
+
+const url=location.origin+location.pathname+"?share="+encoded;
+
+navigator.clipboard.writeText(url);
+
+alert("共有URLをコピーしました");
+
+}
+
+function restoreFromData(){
+
+if(!restoreData) return;
+
+restoreData.forEach(item=>{
+
+if(String(item.idx).startsWith("wait_")){
+addSelected({
+effect:"待つ",
+prep_time:Number(item.prep),
+start_time:Number(item.start),
+name1:"",
+name2:"",
+image_url:"",
+idx:item.idx
+});
+return;
+}
+
+const row=originalData.find(r=>String(r.idx)===String(item.idx));
+
+if(row){
+addSelected(row);
+
+const last=[...document.querySelectorAll("#selected .order")].pop();
+
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+
+}
+
+});
+
+restoreData=null;
+updateTimes();
+
+}
+
+document.querySelectorAll("#typeFilters input")
+.forEach(cb=>{
+cb.addEventListener("change",applyFilter);
+});
+
+document.getElementById("searchBox")
+.addEventListener("input",applyFilter);
+
+window.addEventListener("load",()=>{
+
+const params=new URLSearchParams(location.search);
+
+const share=params.get("share");
+
+if(share){
+restoreData=JSON.parse(decodeURIComponent(atob(share)));
+}
+
+loadCsv();
+updateTimes();
+
+});
 </script>
 
 </body>
