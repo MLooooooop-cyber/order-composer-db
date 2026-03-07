@@ -95,7 +95,7 @@ padding:3px;
 font-size:12px;
 }
 
-/* 属性カラー（かなり薄い） */
+/* ===== 属性カラー ===== */
 
 .attr-fire{
 background:#fff2f2;
@@ -109,7 +109,7 @@ background:#f2f6ff;
 background:#f2fff2;
 }
 
-/* ===== 2属性ストライプ ===== */
+/* ===== 2属性（三角カラー） ===== */
 
 .attr-fire-water,
 .attr-fire-wind,
@@ -117,7 +117,7 @@ background:#f2fff2;
 background:#ffffff;
 }
 
-/* 左上ストライプ */
+/* 左上三角 */
 
 .attr-fire-water::before,
 .attr-fire-wind::before,
@@ -126,12 +126,13 @@ content:"";
 position:absolute;
 top:0;
 left:0;
-width:40%;
-height:40%;
-clip-path:polygon(0 0,100% 0,0 100%);
+width:0;
+height:0;
+border-top:120px solid;
+border-right:120px solid transparent;
 }
 
-/* 右下ストライプ */
+/* 右下三角 */
 
 .attr-fire-water::after,
 .attr-fire-wind::after,
@@ -140,48 +141,40 @@ content:"";
 position:absolute;
 bottom:0;
 right:0;
-width:40%;
-height:40%;
-clip-path:polygon(100% 0,100% 100%,0 100%);
+width:0;
+height:0;
+border-bottom:120px solid;
+border-left:120px solid transparent;
 }
 
 /* 火＋水 */
 
-.attr-fire-water::before,
+.attr-fire-water::before{
+border-top-color:#fff2f2;
+}
+
 .attr-fire-water::after{
-background:repeating-linear-gradient(
-135deg,
-#fff2f2,
-#fff2f2 4px,
-#f2f6ff 4px,
-#f2f6ff 8px
-);
+border-bottom-color:#f2f6ff;
 }
 
 /* 火＋風 */
 
-.attr-fire-wind::before,
+.attr-fire-wind::before{
+border-top-color:#fff2f2;
+}
+
 .attr-fire-wind::after{
-background:repeating-linear-gradient(
-135deg,
-#fff2f2,
-#fff2f2 4px,
-#f2fff2 4px,
-#f2fff2 8px
-);
+border-bottom-color:#f2fff2;
 }
 
 /* 水＋風 */
 
-.attr-water-wind::before,
+.attr-water-wind::before{
+border-top-color:#f2f6ff;
+}
+
 .attr-water-wind::after{
-background:repeating-linear-gradient(
-135deg,
-#f2f6ff,
-#f2f6ff 4px,
-#f2fff2 4px,
-#f2fff2 8px
-);
+border-bottom-color:#f2fff2;
 }
 
 </style>
@@ -242,6 +235,7 @@ background:repeating-linear-gradient(
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
+/* ここから下はあなたの元コードそのまま */
 
 const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
