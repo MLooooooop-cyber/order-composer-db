@@ -95,30 +95,23 @@ padding:3px;
 font-size:12px;
 }
 
-/* ===== 属性カラー（単色） ===== */
+/* ===== 属性ベース ===== */
 
-.attr-fire{
-background:#fff2f2;
-}
-
-.attr-water{
-background:#f2f6ff;
-}
-
-.attr-wind{
-background:#f2fff2;
-}
-
-/* ===== 2属性カラー（三角） ===== */
-
+.attr-fire,
+.attr-water,
+.attr-wind,
 .attr-fire-water,
 .attr-fire-wind,
 .attr-water-wind{
 background:#ffffff;
+position:relative;
 }
 
-/* 左上三角 */
+/* ===== 左上三角 ===== */
 
+.attr-fire::before,
+.attr-water::before,
+.attr-wind::before,
 .attr-fire-water::before,
 .attr-fire-wind::before,
 .attr-water-wind::before{
@@ -132,7 +125,7 @@ clip-path:polygon(0 0,100% 0,0 100%);
 z-index:0;
 }
 
-/* 右下三角 */
+/* ===== 右下三角（2属性のみ） ===== */
 
 .attr-fire-water::after,
 .attr-fire-wind::after,
@@ -147,7 +140,25 @@ clip-path:polygon(100% 0,100% 100%,0 100%);
 z-index:0;
 }
 
-/* 火＋水 */
+/* ===== 火 ===== */
+
+.attr-fire::before{
+background:#fff2f2;
+}
+
+/* ===== 水 ===== */
+
+.attr-water::before{
+background:#f2f6ff;
+}
+
+/* ===== 風 ===== */
+
+.attr-wind::before{
+background:#f2fff2;
+}
+
+/* ===== 火＋水 ===== */
 
 .attr-fire-water::before{
 background:#fff2f2;
@@ -157,7 +168,7 @@ background:#fff2f2;
 background:#f2f6ff;
 }
 
-/* 火＋風 */
+/* ===== 火＋風 ===== */
 
 .attr-fire-wind::before{
 background:#fff2f2;
@@ -167,7 +178,7 @@ background:#fff2f2;
 background:#f2fff2;
 }
 
-/* 水＋風 */
+/* ===== 水＋風 ===== */
 
 .attr-water-wind::before{
 background:#f2f6ff;
@@ -177,7 +188,7 @@ background:#f2f6ff;
 background:#f2fff2;
 }
 
-/* ===== 文字を前に出す ===== */
+/* ===== 文字を前面 ===== */
 
 .order img,
 .info,
