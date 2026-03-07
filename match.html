@@ -24,6 +24,8 @@ margin-bottom:4px;
 padding:4px;
 background:#fafafa;
 cursor:pointer;
+position:relative;
+overflow:hidden;
 }
 
 .order.wait{background:#e8e8e8;}
@@ -107,18 +109,79 @@ background:#f2f6ff;
 background:#f2fff2;
 }
 
-/* 2属性分割（左上→右下） */
+/* ===== 2属性ストライプ ===== */
 
-.attr-fire-water{
-background:linear-gradient(135deg,#fff2f2 50%,#f2f6ff 50%);
-}
-
-.attr-fire-wind{
-background:linear-gradient(135deg,#fff2f2 50%,#f2fff2 50%);
-}
-
+.attr-fire-water,
+.attr-fire-wind,
 .attr-water-wind{
-background:linear-gradient(135deg,#f2f6ff 50%,#f2fff2 50%);
+background:#ffffff;
+}
+
+/* 左上ストライプ */
+
+.attr-fire-water::before,
+.attr-fire-wind::before,
+.attr-water-wind::before{
+content:"";
+position:absolute;
+top:0;
+left:0;
+width:40%;
+height:40%;
+clip-path:polygon(0 0,100% 0,0 100%);
+}
+
+/* 右下ストライプ */
+
+.attr-fire-water::after,
+.attr-fire-wind::after,
+.attr-water-wind::after{
+content:"";
+position:absolute;
+bottom:0;
+right:0;
+width:40%;
+height:40%;
+clip-path:polygon(100% 0,100% 100%,0 100%);
+}
+
+/* 火＋水 */
+
+.attr-fire-water::before,
+.attr-fire-water::after{
+background:repeating-linear-gradient(
+135deg,
+#fff2f2,
+#fff2f2 4px,
+#f2f6ff 4px,
+#f2f6ff 8px
+);
+}
+
+/* 火＋風 */
+
+.attr-fire-wind::before,
+.attr-fire-wind::after{
+background:repeating-linear-gradient(
+135deg,
+#fff2f2,
+#fff2f2 4px,
+#f2fff2 4px,
+#f2fff2 8px
+);
+}
+
+/* 水＋風 */
+
+.attr-water-wind::before,
+.attr-water-wind::after{
+background:repeating-linear-gradient(
+135deg,
+#f2f6ff,
+#f2f6ff 4px,
+#f2fff2 4px,
+#f2fff2 8px
+);
 }
 
 </style>
