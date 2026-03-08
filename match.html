@@ -556,43 +556,33 @@ box.innerHTML=
 "効果終了 "+formatTime(nextBase);
 }
 
-/* ===== 表示更新（memo保持版） ===== */
+/* ===== 表示更新（memo壊さない） ===== */
 
 const info=div.querySelector(".info");
 
 if(info){
 
-const memo=info.querySelector(".memo");
+const nodes=[...info.childNodes];
 
-let memoValue="";
-if(memo) memoValue=memo.value;
+for(let n of nodes){
 
-const lines=info.innerHTML.split("<br>");
+if(n.nodeType===3) continue;
 
-if(lines.length>=2){
+if(n.tagName==="BR") continue;
+
+if(n.classList && n.classList.contains("memo")) continue;
+
+if(n.innerHTML && n.innerHTML.includes("+")){
 
 if(prepDisplay!==prep){
-lines[1]=prepDisplay+"+"+start+"秒";
+n.innerHTML=prepDisplay+"+"+start+"秒";
 }else{
-lines[1]=originalPrep+"+"+start+"秒";
+n.innerHTML=originalPrep+"+"+start+"秒";
 }
 
+break;
+
 }
-
-/* memoを除いたHTML再構築 */
-
-info.innerHTML=lines.slice(0,3).join("<br>");
-
-if(memo){
-
-const newMemo=document.createElement("input");
-newMemo.type="text";
-newMemo.className="memo";
-newMemo.placeholder="メモ";
-newMemo.value=memoValue;
-newMemo.oninput=updateTimes;
-
-info.appendChild(newMemo);
 
 }
 
@@ -601,6 +591,12 @@ info.appendChild(newMemo);
 base=nextBase;
 
 });
+
+document.getElementById("totalTime").innerHTML=
+"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
+"<br>合計: "+total+"秒";
+
+}
 
 document.getElementById("totalTime").innerHTML=
 "残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
