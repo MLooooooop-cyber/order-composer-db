@@ -520,18 +520,24 @@ let total=0;
 
 items.forEach((div,i)=>{
 
-let prep=Number(div.dataset.prep);
+let originalPrep=Number(div.dataset.prep);
+let prep=originalPrep;
 const start=Number(div.dataset.start);
 
 /* ===== 準備時間短縮Lv.3 判定 ===== */
+
+let prepDisplay=prep;
 
 if(i>0){
 
 const prev=items[i-1];
 const prevText=prev.querySelector(".info").innerText;
 
-if(prevText.includes("準備時間短縮Lv.3")){
+if(prevText.includes("準備時間短縮Lv.3") && originalPrep>0){
+
 prep=5;
+prepDisplay="★5("+originalPrep+")";
+
 }
 
 }
@@ -548,6 +554,24 @@ box.innerHTML=
 "残り "+formatTime(base)+"<br>"+
 "発動 "+formatTime(activatedTime)+"<br>"+
 "効果終了 "+formatTime(nextBase);
+}
+
+/* 表示更新 */
+
+const info=div.querySelector(".info");
+
+if(info){
+
+const lines=info.innerHTML.split("<br>");
+
+if(prepDisplay!==prep){
+lines[1]=prepDisplay+"+"+start+"秒";
+}else{
+lines[1]=originalPrep+"+"+start+"秒";
+}
+
+info.innerHTML=lines.join("<br>");
+
 }
 
 base=nextBase;
