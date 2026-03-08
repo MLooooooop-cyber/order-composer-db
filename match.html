@@ -556,37 +556,36 @@ box.innerHTML=
 "効果終了 "+formatTime(nextBase);
 }
 
-/* ===== 表示更新（memo保持） ===== */
+/* ===== 表示更新（memoを壊さない） ===== */
 
 const info=div.querySelector(".info");
 
 if(info){
 
-const memo=info.querySelector(".memo");
-let memoValue=memo?memo.value:"";
+/* infoの2行目のテキストだけ更新 */
 
-const html=info.innerHTML.replace(/<input[^>]*>/g,"");
+const nodes=[...info.childNodes];
 
-const lines=html.split("<br>");
+let brCount=0;
 
-if(prepDisplay!==prep){
-lines[1]=prepDisplay+"+"+start+"秒";
-}else{
-lines[1]=originalPrep+"+"+start+"秒";
+for(let n of nodes){
+
+if(n.nodeName==="BR"){
+brCount++;
+continue;
 }
 
-info.innerHTML=lines.join("<br>");
+if(brCount===1 && n.nodeType===3){
 
-if(memo){
+if(prepDisplay!==prep){
+n.nodeValue=prepDisplay+"+"+start+"秒";
+}else{
+n.nodeValue=originalPrep+"+"+start+"秒";
+}
 
-const newMemo=document.createElement("input");
-newMemo.type="text";
-newMemo.className="memo";
-newMemo.placeholder="メモ";
-newMemo.value=memoValue;
-newMemo.oninput=updateTimes;
+break;
 
-info.appendChild(newMemo);
+}
 
 }
 
