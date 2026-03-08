@@ -258,8 +258,6 @@ z-index:1;
 
 <script>
 
-/* JSはあなたの元コードそのまま */
-
 const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
 let originalData=[];
@@ -273,8 +271,6 @@ const m=Math.floor(sec/60);
 const s=sec%60;
 return sign+m+"分"+s+"秒";
 }
-
-/* 以下完全同じ */
 
 function loadCsv(){
 Papa.parse(csvURL,{
@@ -295,8 +291,6 @@ restoreFromData();
 }
 });
 }
-
-/* 以下JS全部同じ（省略なし） */
 
 function sortData(data){
 return [...data].sort((a,b)=>
@@ -491,8 +485,6 @@ return div;
 
 }
 
-/* 以下JS完全同じ */
-
 function addSelected(row){
 const sel=document.getElementById("selected");
 
@@ -526,10 +518,25 @@ const items=document.querySelectorAll("#selected .order");
 let base=900;
 let total=0;
 
+/* ===== 準備時間短縮Lv.3判定 ===== */
+
+let hasPrepShort3=false;
+
+items.forEach(div=>{
+const name=div.querySelector(".info").innerText;
+if(name.includes("準備時間短縮Lv.3")){
+hasPrepShort3=true;
+}
+});
+
 items.forEach(div=>{
 
-const prep=Number(div.dataset.prep);
+let prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
+
+if(hasPrepShort3 && prep>0){
+prep=5;
+}
 
 const activatedTime=base-prep;
 const nextBase=activatedTime-start;
