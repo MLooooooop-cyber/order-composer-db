@@ -653,7 +653,10 @@ if(!restoreData) return;
 
 restoreData.forEach(item=>{
 
+/* ===== 待つ ===== */
+
 if(String(item.idx).startsWith("wait_")){
+
 addSelected({
 effect:"待つ",
 prep_time:Number(item.prep),
@@ -663,12 +666,23 @@ name2:"",
 image_url:"",
 idx:item.idx
 });
-return;
+
+const last=[...document.querySelectorAll("#selected .order")].pop();
+
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
 }
+
+return;
+
+}
+
+/* ===== 通常オーダー ===== */
 
 const row=originalData.find(r=>String(r.idx)===String(item.idx));
 
 if(row){
+
 addSelected(row);
 
 const last=[...document.querySelectorAll("#selected .order")].pop();
