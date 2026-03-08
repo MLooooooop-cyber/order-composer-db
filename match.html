@@ -513,29 +513,27 @@ setTimeout(()=>target.classList.remove("highlight"),600);
 
 function updateTimes(){
 
-const items=document.querySelectorAll("#selected .order");
+const items=[...document.querySelectorAll("#selected .order")];
 
 let base=900;
 let total=0;
 
-/* ===== 準備時間短縮Lv.3判定 ===== */
-
-let hasPrepShort3=false;
-
-items.forEach(div=>{
-const name=div.querySelector(".info").innerText;
-if(name.includes("準備時間短縮Lv.3")){
-hasPrepShort3=true;
-}
-});
-
-items.forEach(div=>{
+items.forEach((div,i)=>{
 
 let prep=Number(div.dataset.prep);
 const start=Number(div.dataset.start);
 
-if(hasPrepShort3 && prep>0){
+/* ===== 準備時間短縮Lv.3 判定 ===== */
+
+if(i>0){
+
+const prev=items[i-1];
+const prevText=prev.querySelector(".info").innerText;
+
+if(prevText.includes("準備時間短縮Lv.3")){
 prep=5;
+}
+
 }
 
 const activatedTime=base-prep;
@@ -559,6 +557,7 @@ base=nextBase;
 document.getElementById("totalTime").innerHTML=
 "残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
 "<br>合計: "+total+"秒";
+
 }
 
 function addWait(sec){
