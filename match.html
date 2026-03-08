@@ -637,9 +637,11 @@ memo:div.querySelector(".memo")?
 div.querySelector(".memo").value:""
 }));
 
-/* ===== JSON → base64 URL safe ===== */
+/* ===== UTF8 → base64 ===== */
 
-let encoded=btoa(JSON.stringify(data))
+let json=JSON.stringify(data);
+
+let encoded=btoa(unescape(encodeURIComponent(json)))
 .replace(/\+/g,"-")
 .replace(/\//g,"_")
 .replace(/=/g,"");
@@ -727,13 +729,13 @@ let decoded=share
 .replace(/-/g,"+")
 .replace(/_/g,"/");
 
-/* base64 padding復元 */
-
 while(decoded.length%4){
 decoded+="=";
 }
 
-restoreData=JSON.parse(atob(decoded));
+const json=decodeURIComponent(escape(atob(decoded)));
+
+restoreData=JSON.parse(json);
 
 }
 
