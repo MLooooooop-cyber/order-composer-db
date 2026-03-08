@@ -2,251 +2,637 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>match</title>
+<title>Order Composer - Match</title>
 
 <style>
+body{margin:0;background:#f2f2f2;font-family:Arial,sans-serif;font-size:13px;}
+.wrapper{width:1200px;margin:20px auto;}
+.title{font-size:20px;margin-bottom:10px;}
+.main{display:flex;gap:15px;}
 
-body{
-font-family:sans-serif;
-margin:0;
-display:flex;
-height:100vh;
-}
+.panel{background:#fff;border:1px solid #ccc;padding:10px;}
+.left{width:420px;}
+.right{flex:1;}
 
-#left{
-width:40%;
-border-right:1px solid #ccc;
-overflow:auto;
-padding:10px;
-}
-
-#right{
-flex:1;
-padding:10px;
-overflow:auto;
-}
-
-.item{
-display:flex;
-gap:8px;
-align-items:center;
-border:1px solid #ddd;
-padding:5px;
-margin-bottom:5px;
-cursor:pointer;
-}
+.scroll{height:600px;overflow-y:auto;border:1px solid #ddd;padding:5px;}
 
 .order{
-border:1px solid #aaa;
-padding:6px;
-margin-bottom:6px;
+display:flex;
+align-items:flex-start;
+border:1px solid #e0e0e0;
+margin-bottom:4px;
+padding:4px;
 background:#fafafa;
+cursor:pointer;
+position:relative;
+overflow:hidden;
+}
+
+.order.wait{background:#e8e8e8;}
+.order.disabled{background:#ddd !important;opacity:0.5;cursor:not-allowed;}
+.order.dragging{opacity:0.4;}
+.order.highlight{animation:flash 0.6s ease;}
+
+@keyframes flash{
+0%{background:#ffe082;}
+100%{background:#fafafa;}
+}
+
+.info{
+flex:1;
+line-height:1.3;
+word-break:break-all;
+display:flex;
+flex-direction:column;
 }
 
 .memo{
 width:100%;
 margin-top:4px;
+font-size:12px;
+box-sizing:border-box;
 }
 
-.controls{
-margin-bottom:10px;
+.timebox{
+width:170px;
+text-align:right;
+font-weight:bold;
+margin-right:6px;
+line-height:1.4;
 }
 
-.wait{
-background:#eef;
+.controls{margin-bottom:8px;}
+
+button{
+font-size:12px;
+padding:2px 6px;
+margin-right:4px;
 }
 
+.total{
+margin-top:6px;
+font-weight:bold;
+}
+
+#typeFilters label{
+margin-right:10px;
+font-size:12px;
+cursor:pointer;
+}
+
+#searchBox{
+width:200px;
+padding:3px;
+font-size:12px;
+}
+
+/* ===== 属性ベース ===== */
+
+.attr-fire,
+.attr-water,
+.attr-wind,
+.attr-light,
+.attr-dark,
+.attr-fire-water,
+.attr-fire-wind,
+.attr-water-wind,
+.attr-light-fire,
+.attr-light-water,
+.attr-light-wind,
+.attr-dark-fire,
+.attr-dark-water,
+.attr-dark-wind,
+.attr-light-dark{
+background:#ffffff;
+position:relative;
+}
+
+/* ===== 左上三角 ===== */
+
+.attr-fire::before,
+.attr-water::before,
+.attr-wind::before,
+.attr-light::before,
+.attr-dark::before,
+.attr-fire-water::before,
+.attr-fire-wind::before,
+.attr-water-wind::before,
+.attr-light-fire::before,
+.attr-light-water::before,
+.attr-light-wind::before,
+.attr-dark-fire::before,
+.attr-dark-water::before,
+.attr-dark-wind::before,
+.attr-light-dark::before{
+content:"";
+position:absolute;
+top:0;
+left:0;
+width:45%;
+height:45%;
+clip-path:polygon(0 0,100% 0,0 100%);
+z-index:0;
+}
+
+/* ===== 右下三角 ===== */
+
+.attr-fire-water::after,
+.attr-fire-wind::after,
+.attr-water-wind::after,
+.attr-light-fire::after,
+.attr-light-water::after,
+.attr-light-wind::after,
+.attr-dark-fire::after,
+.attr-dark-water::after,
+.attr-dark-wind::after,
+.attr-light-dark::after{
+content:"";
+position:absolute;
+bottom:0;
+right:0;
+width:45%;
+height:45%;
+clip-path:polygon(100% 0,100% 100%,0 100%);
+z-index:0;
+}
+
+/* ===== 色 ===== */
+
+.attr-fire::before{background:#fff2f2;}
+.attr-water::before{background:#f2f6ff;}
+.attr-wind::before{background:#f2fff2;}
+.attr-light::before{background:#fff9cc;}
+.attr-dark::before{background:#f4e6ff;}
+
+.attr-fire-water::before{background:#fff2f2;}
+.attr-fire-water::after{background:#f2f6ff;}
+
+.attr-fire-wind::before{background:#fff2f2;}
+.attr-fire-wind::after{background:#f2fff2;}
+
+.attr-water-wind::before{background:#f2f6ff;}
+.attr-water-wind::after{background:#f2fff2;}
+
+.attr-light-fire::before{background:#fff9cc;}
+.attr-light-fire::after{background:#fff2f2;}
+
+.attr-light-water::before{background:#fff9cc;}
+.attr-light-water::after{background:#f2f6ff;}
+
+.attr-light-wind::before{background:#fff9cc;}
+.attr-light-wind::after{background:#f2fff2;}
+
+.attr-dark-fire::before{background:#f4e6ff;}
+.attr-dark-fire::after{background:#fff2f2;}
+
+.attr-dark-water::before{background:#f4e6ff;}
+.attr-dark-water::after{background:#f2f6ff;}
+
+.attr-dark-wind::before{background:#f4e6ff;}
+.attr-dark-wind::after{background:#f2fff2;}
+
+.attr-light-dark::before{background:#fff9cc;}
+.attr-light-dark::after{background:#f4e6ff;}
+
+.info,
+.timebox{
+position:relative;
+z-index:1;
+}
 </style>
 </head>
 
 <body>
 
-<div id="left">
-<h3>候補</h3>
-<div id="list"></div>
-</div>
+<div class="wrapper">
 
-<div id="right">
+<div class="title">Order Composer - Match</div>
+
+<div class="main">
+
+<div class="panel left">
 
 <div class="controls">
-<button onclick="addWait()">待つ</button>
+<button onclick="addWait(5)">+5秒</button>
+<button onclick="addWait(10)">+10秒</button>
+
+<input type="number" id="waitInput" style="width:70px;">
+<button onclick="addCustomWait()">追加</button>
+
+<button onclick="resetAll()">リセット</button>
+
 <button onclick="shareOrders()">共有URLコピー</button>
 </div>
 
-<div id="selected"></div>
+<div id="selected" class="scroll"></div>
+
+<div class="total" id="totalTime">
+残り時間 15分0秒 ／ 発動 0分0秒<br>合計: 0秒
+</div>
 
 </div>
 
+<div class="panel right">
+
+<div style="margin-bottom:6px;">
+<input type="text" id="searchBox" placeholder="オーダー検索">
+</div>
+
+<div id="typeFilters" style="margin-bottom:8px;">
+<label><input type="checkbox" value="属性" checked>属性</label>
+<label><input type="checkbox" value="バフデバフ" checked>バフデバフ</label>
+<label><input type="checkbox" value="発動率" checked>発動率</label>
+<label><input type="checkbox" value="MP" checked>MP</label>
+<label><input type="checkbox" value="盾" checked>盾</label>
+<label><input type="checkbox" value="その他" checked>その他</label>
+</div>
+
+<div id="list" class="scroll"></div>
+
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
 <script>
+
+const csvURL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNltvz7UjpE5-78DcrBQIJfHZgWF6fYUOoWFWqQp26-WCK55Dr-Lj_UfPJFLPdNtFJVH2mYgdjAD_0/pub?output=csv";
 
 let originalData=[];
 let restoreData=null;
-
-/* -------------------- CSV LOAD -------------------- */
-
-function loadCsv(){
-
-fetch("data.csv")
-.then(r=>r.text())
-.then(text=>{
-
-const rows=text.trim().split("\n").slice(1);
-
-originalData=rows.map(line=>{
-
-const c=line.split(",");
-
-return{
-idx:c[0],
-name1:c[1],
-name2:c[2],
-prep_time:Number(c[3]),
-start_time:Number(c[4]),
-effect:c[5],
-image_url:c[6]
-};
-
-});
-
-renderList();
-restoreFromData();
-
-});
-
-}
-
-/* -------------------- LEFT LIST -------------------- */
-
-function renderList(){
-
-const list=document.getElementById("list");
-list.innerHTML="";
-
-originalData.forEach(row=>{
-
-const div=document.createElement("div");
-div.className="item";
-
-div.innerHTML=`
-<div>${row.name1}</div>
-<div>${row.name2}</div>
-`;
-
-div.onclick=()=>addSelected(row);
-
-list.appendChild(div);
-
-});
-
-}
-
-/* -------------------- ADD ORDER -------------------- */
-
-function addSelected(row){
-
-const div=document.createElement("div");
-div.className="order";
-div.draggable=true;
-
-div.dataset.idx=row.idx;
-div.dataset.start=row.start_time;
-
-div.innerHTML=`
-
-<div><b>${row.name1}</b> ${row.name2}</div>
-<div>準備 ${row.prep_time}s / 効果 ${row.effect}</div>
-
-<input class="memo" placeholder="メモ">
-
-`;
-
-addDrag(div);
-
-document.getElementById("selected").appendChild(div);
-
-updateTimes();
-
-}
-
-/* -------------------- WAIT -------------------- */
-
-function addWait(){
-
-const sec=prompt("何秒待つ？","10");
-
-if(!sec) return;
-
-const div=document.createElement("div");
-div.className="order wait";
-div.draggable=true;
-
-div.dataset.idx="wait_"+Date.now();
-div.dataset.start=sec;
-
-div.innerHTML=`
-
-<div>待つ ${sec}s</div>
-
-<input class="memo" placeholder="メモ">
-
-`;
-
-addDrag(div);
-
-document.getElementById("selected").appendChild(div);
-
-updateTimes();
-
-}
-
-/* -------------------- DRAG -------------------- */
-
 let dragItem=null;
 
-function addDrag(el){
+function formatTime(sec){
+const sign=sec<0?"-":"";
+sec=Math.abs(sec);
+const m=Math.floor(sec/60);
+const s=sec%60;
+return sign+m+"分"+s+"秒";
+}
 
-el.addEventListener("dragstart",()=>dragItem=el);
+function loadCsv(){
+Papa.parse(csvURL,{
+download:true,
+header:true,
+complete:function(res){
 
-el.addEventListener("dragover",e=>{
+originalData=res.data
+.filter(r=>r.effect && r.id)
+.map(r=>({...r,idx:String(r.id).trim()}));
 
-e.preventDefault();
+applyFilter();
 
-const parent=el.parentNode;
+if(restoreData){
+restoreFromData();
+}
 
-if(dragItem!==el){
+}
+});
+}
 
-parent.insertBefore(dragItem,el);
+function sortData(data){
+return [...data].sort((a,b)=>
+(Number(a.prep_time)+Number(a.start_time))-
+(Number(b.prep_time)+Number(b.start_time))
+);
+}
+
+function applyFilter(){
+
+const checks=[
+...document.querySelectorAll("#typeFilters input:checked")
+].map(c=>c.value);
+
+const word=document.getElementById("searchBox").value.toLowerCase();
+
+let data=originalData;
+
+data=data.filter(row=>checks.includes(row.type));
+
+if(word){
+
+data=data.filter(row=>
+(row.effect||"").toLowerCase().includes(word) ||
+(row.name1||"").toLowerCase().includes(word) ||
+(row.name2||"").toLowerCase().includes(word)
+);
 
 }
 
+renderList(sortData(data));
+
+}
+
+function renderList(data){
+
+const list=document.getElementById("list");
+
+const selectedIdxs=[...document.querySelectorAll("#selected .order")]
+.map(div=>div.dataset.idx);
+
+list.innerHTML="";
+
+data.forEach(row=>{
+
+const el=createOrder(row,false);
+
+if(selectedIdxs.includes(String(row.idx))){
+el.classList.add("disabled");
+el.onclick=()=>highlightSelected(row.idx);
+}else{
+el.onclick=()=>addSelected(row);
+}
+
+list.appendChild(el);
+
 });
 
-el.addEventListener("dragend",()=>{
+}
 
-dragItem=null;
+function createOrder(row,isSelected){
+
+const div=document.createElement("div");
+
+div.className="order";
+div.dataset.idx=row.idx;
+div.dataset.prep=row.prep_time||0;
+div.dataset.start=row.start_time||0;
+div.dataset.effect=row.effect;
+
+const text=(row.effect||"")+(row.name1||"")+(row.name2||"");
+
+const fire=text.includes("火");
+const water=text.includes("水");
+const wind=text.includes("風");
+const light=text.includes("光");
+const dark=text.includes("闇");
+
+if(light && dark){
+div.classList.add("attr-light-dark");
+}else if(light && fire){
+div.classList.add("attr-light-fire");
+}else if(light && water){
+div.classList.add("attr-light-water");
+}else if(light && wind){
+div.classList.add("attr-light-wind");
+}else if(dark && fire){
+div.classList.add("attr-dark-fire");
+}else if(dark && water){
+div.classList.add("attr-dark-water");
+}else if(dark && wind){
+div.classList.add("attr-dark-wind");
+}else if(fire && water){
+div.classList.add("attr-fire-water");
+}else if(fire && wind){
+div.classList.add("attr-fire-wind");
+}else if(water && wind){
+div.classList.add("attr-water-wind");
+}else if(light){
+div.classList.add("attr-light");
+}else if(dark){
+div.classList.add("attr-dark");
+}else if(fire){
+div.classList.add("attr-fire");
+}else if(water){
+div.classList.add("attr-water");
+}else if(wind){
+div.classList.add("attr-wind");
+}
+
+if(row.effect==="待つ"){
+div.classList.add("wait");
+}
+
+if(isSelected){
+
+div.draggable=true;
+
+div.addEventListener("dragstart",()=>{
+dragItem=div;
+div.classList.add("dragging");
+});
+
+div.addEventListener("dragend",()=>{
+div.classList.remove("dragging");
+updateTimes();
+});
+
+div.addEventListener("dragover",(e)=>{
+e.preventDefault();
+});
+
+div.addEventListener("drop",(e)=>{
+e.preventDefault();
+if(dragItem && dragItem!==div){
+
+const parent=div.parentNode;
+
+const rect=div.getBoundingClientRect();
+const offset=e.clientY-rect.top;
+
+if(offset>rect.height/2){
+parent.insertBefore(dragItem,div.nextSibling);
+}else{
+parent.insertBefore(dragItem,div);
+}
+
 updateTimes();
 
+}
 });
+
+const time=document.createElement("div");
+time.className="timebox";
+div.appendChild(time);
 
 }
 
-/* -------------------- TIME CALC -------------------- */
+const img=document.createElement("img");
+img.src=row.image_url||"";
+div.appendChild(img);
+
+const info=document.createElement("div");
+info.className="info";
+
+info.innerHTML=
+row.effect+"<br>"+
+row.prep_time+"+"+row.start_time+"秒<br>"+
+(row.name1||"")+
+(row.name2?("<br>"+row.name2):"");
+
+if(isSelected){
+
+const memo=document.createElement("input");
+memo.type="text";
+memo.className="memo";
+memo.placeholder="メモ";
+memo.oninput=updateTimes;
+info.appendChild(memo);
+
+div.ondblclick=()=>{
+div.remove();
+updateTimes();
+applyFilter();
+};
+
+}
+
+div.appendChild(info);
+
+return div;
+
+}
+
+function addSelected(row){
+const sel=document.getElementById("selected");
+
+if([...sel.querySelectorAll(".order")]
+.some(d=>d.dataset.idx===String(row.idx))){
+highlightSelected(row.idx);
+return;
+}
+
+const el=createOrder(row,true);
+sel.appendChild(el);
+
+updateTimes();
+applyFilter();
+}
+
+function highlightSelected(idx){
+const target=[...document.querySelectorAll("#selected .order")]
+.find(d=>d.dataset.idx===String(idx));
+
+if(target){
+target.classList.add("highlight");
+setTimeout(()=>target.classList.remove("highlight"),600);
+}
+}
 
 function updateTimes(){
 
-let time=0;
+const items=[...document.querySelectorAll("#selected .order")];
 
-document.querySelectorAll("#selected .order").forEach(div=>{
+let base=900;
+let total=0;
 
-const start=Number(div.dataset.start)||0;
+items.forEach((div,i)=>{
 
-time+=start;
+let originalPrep=Number(div.dataset.prep);
+let prep=originalPrep;
+const start=Number(div.dataset.start);
 
-});
+/* ===== 準備時間短縮Lv.3 判定 ===== */
+
+let prepDisplay=prep;
+
+if(i>0){
+
+const prev=items[i-1];
+const prevText=prev.querySelector(".info").innerText;
+
+if(prevText.includes("準備時間短縮Lv.3") && originalPrep>0){
+
+prep=5;
+prepDisplay="★5("+originalPrep+")";
 
 }
 
-/* -------------------- SHARE -------------------- */
+}
+
+const activatedTime=base-prep;
+const nextBase=activatedTime-start;
+
+total+=prep+start;
+
+const box=div.querySelector(".timebox");
+
+if(box){
+box.innerHTML=
+"残り "+formatTime(base)+"<br>"+
+"発動 "+formatTime(activatedTime)+"<br>"+
+"効果終了 "+formatTime(nextBase);
+}
+
+/* 表示更新 */
+
+const info=div.querySelector(".info");
+
+if(info){
+
+/* ===== memo保存 ===== */
+
+let memoValue="";
+const memoInput=info.querySelector(".memo");
+
+if(memoInput){
+memoValue=memoInput.value;
+}
+
+/* ===== 表示更新 ===== */
+
+const lines=info.innerHTML.split("<br>");
+
+if(prepDisplay!==prep){
+lines[1]=prepDisplay+"+"+start+"秒";
+}else{
+lines[1]=originalPrep+"+"+start+"秒";
+}
+
+info.innerHTML=lines.join("<br>");
+
+/* ===== memo復元 ===== */
+
+if(memoInput){
+
+const memo=document.createElement("input");
+memo.type="text";
+memo.className="memo";
+memo.placeholder="メモ";
+memo.value=memoValue;
+memo.oninput=updateTimes;
+
+info.appendChild(memo);
+
+}
+
+}
+
+base=nextBase;
+
+});
+
+document.getElementById("totalTime").innerHTML=
+"残り時間 "+formatTime(base)+" ／ 発動 "+formatTime(900-base)+
+"<br>合計: "+total+"秒";
+
+}
+
+function addWait(sec){
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:sec,
+name1:"",
+name2:"",
+image_url:"",
+idx:"wait_"+Date.now()
+});
+}
+
+function addCustomWait(){
+const sec=Number(document.getElementById("waitInput").value);
+if(sec>0) addWait(sec);
+document.getElementById("waitInput").value="";
+}
+
+function resetAll(){
+document.getElementById("selected").innerHTML="";
+updateTimes();
+applyFilter();
+}
 
 function shareOrders(){
 
@@ -254,26 +640,20 @@ const items=[...document.querySelectorAll("#selected .order")];
 
 const data=items.map(div=>{
 
-const idx=div.dataset.idx;
-const start=div.dataset.start;
-
-let memo="";
-const memoInput=div.querySelector(".memo");
-if(memoInput) memo=memoInput.value;
+let idx=div.dataset.idx;
+let memo=div.querySelector(".memo")?div.querySelector(".memo").value:"";
 
 if(idx.startsWith("wait_")){
-
-return "w"+start+"~"+encodeURIComponent(memo);
-
+return "w"+div.dataset.start+"~"+encodeURIComponent(memo);
 }
 
 return idx+"~"+encodeURIComponent(memo);
 
 }).join(",");
 
-/* BASE64 SHORT */
+/* 超短縮圧縮 */
 
-const compressed=btoa(data)
+let compressed=btoa(data)
 .replace(/\+/g,"-")
 .replace(/\//g,"_")
 .replace(/=/g,"");
@@ -282,11 +662,9 @@ const url=location.origin+location.pathname+"?c="+compressed;
 
 navigator.clipboard.writeText(url);
 
-alert("共有URLコピーしました");
+alert("共有URLをコピーしました");
 
 }
-
-/* -------------------- RESTORE -------------------- */
 
 function restoreFromData(){
 
@@ -294,15 +672,26 @@ if(!restoreData) return;
 
 restoreData.forEach(item=>{
 
-let div=null;
-
 if(item.type==="wait"){
 
-addWaitRestore(item);
+addSelected({
+effect:"待つ",
+prep_time:0,
+start_time:item.sec,
+name1:"",
+name2:"",
+image_url:"",
+idx:"wait_"+Date.now()
+});
 
-div=[...document.querySelectorAll("#selected .order")].pop();
+const last=[...document.querySelectorAll("#selected .order")].pop();
 
-}else{
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+
+return;
+}
 
 const row=originalData.find(r=>String(r.idx)===String(item.idx));
 
@@ -310,17 +699,11 @@ if(row){
 
 addSelected(row);
 
-div=[...document.querySelectorAll("#selected .order")].pop();
+const last=[...document.querySelectorAll("#selected .order")].pop();
 
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
 }
-
-}
-
-if(div && item.memo){
-
-const memoInput=div.querySelector(".memo");
-
-if(memoInput) memoInput.value=item.memo;
 
 }
 
@@ -331,33 +714,13 @@ updateTimes();
 
 }
 
-/* WAIT RESTORE */
+document.querySelectorAll("#typeFilters input")
+.forEach(cb=>{
+cb.addEventListener("change",applyFilter);
+});
 
-function addWaitRestore(item){
-
-const div=document.createElement("div");
-
-div.className="order wait";
-div.draggable=true;
-
-div.dataset.idx="wait_"+Date.now();
-div.dataset.start=item.sec;
-
-div.innerHTML=`
-
-<div>待つ ${item.sec}s</div>
-
-<input class="memo">
-
-`;
-
-addDrag(div);
-
-document.getElementById("selected").appendChild(div);
-
-}
-
-/* -------------------- URL READ -------------------- */
+document.getElementById("searchBox")
+.addEventListener("input",applyFilter);
 
 window.addEventListener("load",()=>{
 
@@ -375,35 +738,25 @@ decoded=atob(decoded);
 
 restoreData=decoded.split(",").map(v=>{
 
-const parts=v.split("~");
+let parts=v.split("~");
 
-const key=parts[0];
-const memo=parts[1]?decodeURIComponent(parts[1]):"";
+let key=parts[0];
+let memo=parts[1]?decodeURIComponent(parts[1]):"";
 
 if(key.startsWith("w")){
-
-return{
-type:"wait",
-sec:Number(key.slice(1)),
-memo:memo
-};
-
+return {type:"wait",sec:Number(key.slice(1)),memo:memo};
 }
 
-return{
-type:"order",
-idx:key,
-memo:memo
-};
+return {type:"order",idx:key,memo:memo};
 
 });
 
 }
 
 loadCsv();
+updateTimes();
 
 });
-
 </script>
 
 </body>
