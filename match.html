@@ -612,17 +612,27 @@ function shareOrders(){
 
 const items=[...document.querySelectorAll("#selected .order")];
 
-const data=items.map(div=>({
-idx:div.dataset.idx,
-prep:div.dataset.prep,
-start:div.dataset.start,
-memo:div.querySelector(".memo")?
-div.querySelector(".memo").value:""
-}));
+const data=items.map(div=>{
 
-const encoded=btoa(encodeURIComponent(JSON.stringify(data)));
+let idx=div.dataset.idx;
+let memo=div.querySelector(".memo")?div.querySelector(".memo").value:"";
 
-const url=location.origin+location.pathname+"?share="+encoded;
+if(idx.startsWith("wait_")){
+return "w"+div.dataset.start+"~"+encodeURIComponent(memo);
+}
+
+return idx+"~"+encodeURIComponent(memo);
+
+}).join(",");
+
+/* 超短縮圧縮 */
+
+let compressed=btoa(data)
+.replace(/\+/g,"-")
+.replace(/\//g,"_")
+.replace(/=/g,"");
+
+const url=location.origin+location.pathname+"?c="+compressed;
 
 navigator.clipboard.writeText(url);
 
@@ -636,22 +646,31 @@ if(!restoreData) return;
 
 restoreData.forEach(item=>{
 
-if(String(item.idx).startsWith("wait_")){
+if(item.type==="wait"){
+
 addSelected({
 effect:"待つ",
-prep_time:Number(item.prep),
-start_time:Number(item.start),
+prep_time:0,
+start_time:item.sec,
 name1:"",
 name2:"",
 image_url:"",
-idx:item.idx
+idx:"wait_"+Date.now()
 });
+
+const last=[...document.querySelectorAll("#selected .order")].pop();
+
+if(last && item.memo){
+last.querySelector(".memo").value=item.memo;
+}
+
 return;
 }
 
 const row=originalData.find(r=>String(r.idx)===String(item.idx));
 
 if(row){
+
 addSelected(row);
 
 const last=[...document.querySelectorAll("#selected .order")].pop();
@@ -681,10 +700,31 @@ window.addEventListener("load",()=>{
 
 const params=new URLSearchParams(location.search);
 
-const share=params.get("share");
+const compressed=params.get("c");
 
-if(share){
-restoreData=JSON.parse(decodeURIComponent(atob(share)));
+if(compressed){
+
+let decoded=compressed
+.replace(/-/g,"+")
+.replace(/_/g,"/");
+
+decoded=atob(decoded);
+
+restoreData=decoded.split(",").map(v=>{
+
+let parts=v.split("~");
+
+let key=parts[0];
+let memo=parts[1]?decodeURIComponent(parts[1]):"";
+
+if(key.startsWith("w")){
+return {type:"wait",sec:Number(key.slice(1)),memo:memo};
+}
+
+return {type:"order",idx:key,memo:memo};
+
+});
+
 }
 
 loadCsv();
